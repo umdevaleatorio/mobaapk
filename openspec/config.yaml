@@ -1,0 +1,54 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+context: |
+  Por favor, gere todos os artefatos em português do Brasil (pt-BR)
+
+  # ARQUITETURA E TECH STACK (MOBILE)
+  O projeto é um aplicativo mobile desenvolvido estritamente com Expo e React Native
+
+  # TECHNOLOGIAS E INTEGRAÇÕES
+  - Framework: Expo e React Native (utilização TypeScript)
+  - Recurso Nativo: Câmera, Geolocalização
+  - Backend: Supabase(Autenticação, Banco de Dados, Armazenamento)
+  - Banco de Dados local: SQLite
+
+  rules:
+  - proposal:
+    - Toda proposta deve especificar explicitamente as integrações necessárias com Supabase.
+    - Liste claramente as permissões de hardware que serão necessárias.
+
+  - specs:
+    - Utilize sempre o formato testável Given/When/Then (Dado/Quando/Então).
+    - Inclue cenários de exceção para recusa de permissões e falhas de rede.
+    - Inclua cenários de sucesso para cada funcionalidade
+
+  - design:
+    - Detalhe as configurações e permussões necessárias para os módulos do Expo envolvidos.
+    - Especifique a estratégia de sincronização de dados entre SQLite e Supabase.
+    - Descreva a arquitetura do upload de mídia.
+    - Estruture a UI/UX em componentes React Native, listando o fluxo de navegação necessário.
+
+  - tasks:
+    - Agrupe as tarefas em categorias literais.
+    - Organize as tarefas para que a implementação seja feita utlizando TDD (Test Driven Development).
+    - Sempre inclua tarefas de tratamento e erro e exceções.
+    - As tarefas devem ser encadeadas em ordem lógica garantindo a escrita do teste antes da implementação 
+    - 
