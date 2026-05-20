@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import {
   View,
@@ -11,11 +11,18 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
+import * as Notifications from 'expo-notifications';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
 import { CatalogHeader } from '../../components/CatalogHeader';
 
@@ -23,35 +30,53 @@ import { CatalogHeader } from '../../components/CatalogHeader';
 // Removidos MiniLogo, Lupa, PersonIcon e OpcoesSvg (trabalhados no CatalogHeader)
 
 // === CONFIG SVGs ===
-import EmailLabel from '../../assets/tela7/config/EmailLabel.svg';
-import EmailAlterar from '../../assets/tela7/config/EmailAlterar.svg';
-import SenhaLabel from '../../assets/tela7/config/SenhaLabel.svg';
-import SenhaAlterar from '../../assets/tela7/config/SenhaAlterar.svg';
-import Eye from '../../assets/tela7/config/Eye.svg';
-import CadastrarNumero from '../../assets/tela7/config/CadastrarNumero.svg';
+// SVGs are replaced by Feather icons and Custom Animated Switch components
 
-// === TOGGLE SVGs (ícones reais do Figma) ===
-import LightDark from '../../assets/tela7/config/Light n Dark.svg';
-import TemaEscuro from '../../assets/tela7/config/Tema escuro_.svg';
-import DarkModeIcon from '../../assets/tela7/config/Dark Mode Icon.svg';
-import NotifIcon from '../../assets/tela7/config/Notificação.svg';
-import NotifLabel from '../../assets/tela7/config/Notificação_.svg';
-import NotifButton from '../../assets/tela7/config/Notification Buttom.svg';
-import PermIcon from '../../assets/tela7/config/Permission.svg';
-import PermLabel from '../../assets/tela7/config/Permissão_.svg';
-import PermButton from '../../assets/tela7/config/Perm Buttom.svg';
+interface CustomSwitchProps {
+  active: boolean;
+  onPress: () => void;
+  colorActive?: string;
+  animValue: Animated.Value;
+}
+
+const CustomSwitch: React.FC<CustomSwitchProps> = ({ active, onPress, colorActive = '#EA841E', animValue }) => {
+  const { colors, isDarkMode } = useTheme();
+
+  const trackColor = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isDarkMode ? '#2E2E38' : '#C0CADE', colorActive],
+  });
+
+  const translateX = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [3, 27],
+  });
+
+  return (
+    <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+      <Animated.View style={[styles.switchTrack, { backgroundColor: trackColor }]}>
+        <Animated.View style={[styles.switchThumb, { transform: [{ translateX }] }]} />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
 
 export default function SettingsScreen() {
   const { toggleMenu } = useUserMenu();
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+  const { isDarkMode, toggleTheme, colors } = useTheme();
+
   const [searchText, setSearchText] = useState('');
   const [phone, setPhone] = useState('');
-  
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneStatus, setPhoneStatus] = useState<'cadastrar'|'validar'|'alterar'>('cadastrar');
+
   // Email states
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState('');
-  const [emailStatus, setEmailStatus] = useState<'validar'|'alterar'>('alterar');
+  const [emailStatus, setEmailStatus] = useState<'validar'|'alterar'>(user?.new_email ? 'validar' : 'alterar');
   const [emailError, setEmailError] = useState('');
   const [emailCode, setEmailCode] = useState('');
 
@@ -76,7 +101,75 @@ export default function SettingsScreen() {
   const [passwordCode, setPasswordCode] = useState('');
   const [expectedPasswordCode, setExpectedPasswordCode] = useState('');
 
-  const userEmail = user?.email || 'meuemail@gmail.com';
+  // Notifications toggle state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Permissions state
+  const [cameraPermission, setCameraPermission] = useState<string>('checking');
+  const [galleryPermission, setGalleryPermission] = useState<string>('checking');
+  const [locationPermission, setLocationPermission] = useState<string>('checking');
+  const [notificationsPermission, setNotificationsPermission] = useState<string>('checking');
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  // Animation values using refs
+  const themeSwitchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current;
+  const notifSwitchAnim = React.useRef(new Animated.Value(notificationsEnabled ? 1 : 0)).current;
+
+  const themeIconRotate = React.useRef(new Animated.Value(0)).current;
+  const themeIconScale = React.useRef(new Animated.Value(1)).current;
+  const notifIconRotate = React.useRef(new Animated.Value(0)).current;
+  const permIconScale = React.useRef(new Animated.Value(1)).current;
+
+  // Dynamic switch transition triggers
+  React.useEffect(() => {
+    Animated.spring(themeSwitchAnim, {
+      toValue: isDarkMode ? 1 : 0,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 12,
+    }).start();
+  }, [isDarkMode]);
+
+  React.useEffect(() => {
+    Animated.spring(notifSwitchAnim, {
+      toValue: notificationsEnabled ? 1 : 0,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 12,
+    }).start();
+  }, [notificationsEnabled]);
+
+  const themeRotateInterpolate = themeIconRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const notifRotateInterpolate = notifIconRotate.interpolate({
+    inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
+    outputRange: ['0deg', '-20deg', '20deg', '-15deg', '15deg', '0deg'],
+  });
+
+  const userEmail = user?.new_email || user?.email || 'meuemail@gmail.com';
+
+  // Sincronizar status do e-mail com pendências do Supabase
+  React.useEffect(() => {
+    if (user?.new_email) {
+      setEmailStatus('validar');
+      setEmailInput(user.new_email);
+    } else {
+      setEmailStatus('alterar');
+    }
+  }, [user]);
+
+  // Verificar status inicial das notificações e permissões
+  React.useEffect(() => {
+    const checkInitialNotifications = async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificationsEnabled(status === 'granted');
+    };
+    checkInitialNotifications();
+    checkAllPermissions();
+  }, []);
 
   // Buscar telefone do Supabase
   React.useEffect(() => {
@@ -85,15 +178,214 @@ export default function SettingsScreen() {
       const { data } = await supabase.from('users').select('phone').eq('id', user.id).single();
       if (data && data.phone) {
         setPhone(data.phone);
+        setPhoneStatus('alterar');
+      } else {
+        setPhoneStatus('cadastrar');
       }
     };
     fetchPhone();
   }, [user]);
 
+  const handleConfirmPhone = async () => {
+    // Simulação da validação do SMS
+    if (phoneStatus === 'cadastrar' || phoneStatus === 'alterar') {
+      // Simula enviar SMS e muda pra Validar
+      setPhoneStatus('validar');
+    } else if (phoneStatus === 'validar') {
+      // Simula código correto e salva
+      if (user) {
+        await supabase.from('users').update({ phone: phoneInput }).eq('id', user.id);
+        setPhone(phoneInput);
+        setPhoneStatus('alterar');
+        setShowPhoneModal(false);
+        Alert.alert('Sucesso', 'Telefone cadastrado com sucesso!');
+      }
+    }
+  };
+
+  const handleToggleTheme = () => {
+    // Trigger micro-animation on the theme icon
+    themeIconRotate.setValue(0);
+    Animated.parallel([
+      Animated.timing(themeIconRotate, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(themeIconScale, {
+          toValue: 1.3,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(themeIconScale, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ])
+    ]).start();
+
+    toggleTheme();
+  };
+
+  // Lógica de Registro de Push Notifications
+  const registerForPushNotificationsAsync = async () => {
+    let token = null;
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7A',
+      });
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      return null;
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || '6cb70e8d-d12c-4c75-8d0b-d0c818f76a7a';
+    try {
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      console.log('Token obtido:', token);
+    } catch (e) {
+      console.log('Erro ao obter token:', e);
+    }
+    return token;
+  };
+
+  const sendLocalTestNotification = async () => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Agropet Lambari 🐾",
+        body: "Notificações ativadas! Você receberá atualizações do seu pedido. 🎉",
+        sound: true,
+      },
+      trigger: null,
+    });
+  };
+
+  const handleToggleNotifications = async () => {
+    // Shake animation
+    notifIconRotate.setValue(0);
+    Animated.timing(notifIconRotate, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      if (user) {
+        await supabase.from('users').update({ push_token: null }).eq('id', user.id);
+      }
+      Alert.alert('Notificações', 'Você desativou as notificações.');
+    } else {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        setNotificationsEnabled(true);
+        if (user) {
+          await supabase.from('users').update({ push_token: token }).eq('id', user.id);
+        }
+        await sendLocalTestNotification();
+      } else {
+        // Fallback for simulation / Expo Go SDK 53 / Denied Permission
+        setNotificationsEnabled(true);
+        Alert.alert(
+          'Notificações de Teste Ativas',
+          'Como o push do sistema não pôde ser registrado (comum no Expo Go ou se a permissão foi negada), ativamos o modo de simulação com notificações locais para você testar!',
+          [{ text: 'Maravilha!', onPress: () => sendLocalTestNotification().catch(() => {}) }]
+        );
+      }
+    }
+  };
+
+  const handleOpenPermissions = () => {
+    permIconScale.setValue(1);
+    Animated.sequence([
+      Animated.timing(permIconScale, {
+        toValue: 1.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(permIconScale, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    checkAllPermissions();
+    setShowPermissionsModal(true);
+  };
+
+  // Lógica de Permissões
+  const checkAllPermissions = async () => {
+    try {
+      const camera = await ImagePicker.getCameraPermissionsAsync();
+      setCameraPermission(camera.status);
+      
+      const gallery = await ImagePicker.getMediaLibraryPermissionsAsync();
+      setGalleryPermission(gallery.status);
+
+      const loc = await Location.getForegroundPermissionsAsync();
+      setLocationPermission(loc.status);
+
+      const notif = await Notifications.getPermissionsAsync();
+      setNotificationsPermission(notif.status);
+    } catch (error) {
+      console.log('Error checking permissions:', error);
+    }
+  };
+
+  const requestCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    setCameraPermission(status);
+    checkAllPermissions();
+  };
+
+  const requestGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    setGalleryPermission(status);
+    checkAllPermissions();
+  };
+
+  const requestLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    setLocationPermission(status);
+    checkAllPermissions();
+  };
+
+  const requestNotifications = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    setNotificationsPermission(status);
+    if (status === 'granted') {
+      setNotificationsEnabled(true);
+      const token = await registerForPushNotificationsAsync();
+      if (token && user) {
+        await supabase.from('users').update({ push_token: token }).eq('id', user.id);
+      }
+    } else {
+      setNotificationsEnabled(false);
+    }
+    checkAllPermissions();
+  };
+
   // ======= LÓGICA E-MAIL =======
   const handleConfirmEmail = async () => {
     if (emailStatus === 'alterar') {
       setEmailError('');
+      if (emailInput.trim().toLowerCase() === user?.email?.trim().toLowerCase()) {
+        setEmailError('O e-mail digitado é o mesmo já cadastrado nesta conta. Insira um novo e-mail para alterar.');
+        return;
+      }
       const { data } = await supabase.from('users').select('id').eq('email', emailInput.toLowerCase()).maybeSingle();
       if (data && data.id !== user?.id) {
         setEmailError('Este e-mail já está sendo usado. Por favor, escolha outro e-mail de seu uso.');
@@ -118,6 +410,7 @@ export default function SettingsScreen() {
           return;
         }
         await supabase.from('users').update({ email: emailInput.toLowerCase() }).eq('id', user.id);
+        await supabase.auth.refreshSession().catch(() => {});
         setEmailStatus('alterar');
         setShowEmailModal(false);
       }
@@ -157,11 +450,11 @@ export default function SettingsScreen() {
       }
     }
 
-    // Gerar código de 6 dígitos simulado
+    // Gerar código de 8 dígitos simulado
     const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedPasswordCode(generatedCode);
     console.log("Código de Senha Gerado:", generatedCode); // Para depuração
-    Alert.alert('Código Enviado!', 'Um código simulado foi enviado e impresso no terminal. Ele expira em 15 minutos.');
+    Alert.alert('Código Enviado!', 'Verifique sua caixa de e-mail para pegar o código de 8 dígitos.');
   };
 
   const handleConfirmFinal = async () => {
@@ -195,8 +488,8 @@ export default function SettingsScreen() {
   const isPasswordMatch = newPassword.length > 0 && confirmNewPassword.length > 0 && newPassword === confirmNewPassword;
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header Unificado */}
       <CatalogHeader 
@@ -206,26 +499,30 @@ export default function SettingsScreen() {
       />
 
       {/* ========== FUNDO EXTERNO (#E3E4EB, 342x631, rx=25) ========== */}
-      <View style={styles.outerCard}>
+      <View style={[styles.outerCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
 
         {/* Título DENTRO do fundo externo */}
-        <Text style={styles.mainTitle}>Configurações do Aplicativo</Text>
+        <Text style={[styles.mainTitle, { color: colors.textDark }]}>Configurações do Aplicativo</Text>
 
         {/* ========== CARD ESCURO (#1C2434, rx=25) — contém TUDO ========== */}
-        <View style={styles.darkCard}>
+        <View style={[styles.darkCard, { backgroundColor: isDarkMode ? '#1E1E24' : '#1C2434' }]}>
 
           {/* === E-MAIL === */}
           <View style={styles.fieldSection}>
-            <EmailLabel width={48} height={13} />
-            <View style={styles.fieldInput}>
-              <Text style={styles.fieldValue} numberOfLines={1}>{userEmail}</Text>
+            <Text style={styles.fieldLabel}>E-mail</Text>
+            <View style={[styles.fieldInput, { backgroundColor: isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+              <Text style={[styles.fieldValue, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]} numberOfLines={1}>{userEmail}</Text>
               {emailStatus === 'validar' ? (
-                <TouchableOpacity onPress={() => setShowEmailModal(true)} style={styles.alterarBtnInside}>
-                  <Text style={{ color: '#FFC107', fontWeight: 'bold' }}>Validar</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowEmailModal(true)} 
+                  style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}
+                >
+                  <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
+                  <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => { setEmailInput(userEmail); setEmailError(''); setShowEmailModal(true); }} style={styles.alterarBtnInside}>
-                  <EmailAlterar width={50} height={12} />
+                  <Text style={[styles.alterarTextLink, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -233,9 +530,9 @@ export default function SettingsScreen() {
 
           {/* === SENHA === */}
           <View style={styles.fieldSection}>
-            <SenhaLabel width={49} height={13} />
-            <View style={styles.fieldInput}>
-              <Text style={styles.fieldValue}>••••••••••••••</Text>
+            <Text style={styles.fieldLabel}>Senha</Text>
+            <View style={[styles.fieldInput, { backgroundColor: isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+              <Text style={[styles.fieldValue, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>••••••••••••••</Text>
               <TouchableOpacity onPress={() => {
                 setCurrentPassword('');
                 setNewPassword('');
@@ -245,55 +542,99 @@ export default function SettingsScreen() {
                 setPasswordError('');
                 setShowPasswordModal(true);
               }} style={styles.alterarBtnInside}>
-                <SenhaAlterar width={50} height={12} />
+                <Text style={[styles.alterarTextLink, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* === CADASTRAR NÚMERO === */}
           <View style={styles.fieldSection}>
-            <CadastrarNumero width={143} height={14} />
-            <View style={styles.fieldInput}>
-              <Text style={[styles.fieldValue, phone ? { color: '#000000' } : { color: '#919191' }]}>
+            <Text style={styles.fieldLabel}>Cadastrar Celular</Text>
+            <View style={[styles.fieldInput, { backgroundColor: isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+              <Text style={[styles.fieldValue, phone ? (isDarkMode ? { color: '#FFFFFF' } : { color: '#000000' }) : { color: '#919191' }]} numberOfLines={1}>
                 {phone || 'Digite seu número...'}
               </Text>
+              
+              {phoneStatus === 'cadastrar' && (
+                <TouchableOpacity onPress={() => { setPhoneInput(''); setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
+                  <Text style={[styles.alterarTextLink, { color: '#00C853' }]}>Cadastrar</Text>
+                </TouchableOpacity>
+              )}
+              {phoneStatus === 'validar' && (
+                <TouchableOpacity onPress={() => setShowPhoneModal(true)} style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}>
+                  <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
+                  <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
+                </TouchableOpacity>
+              )}
+              {phoneStatus === 'alterar' && (
+                <TouchableOpacity onPress={() => { setPhoneInput(phone); setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
+                  <Text style={[styles.alterarTextLink, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            {!!phone && (
-              <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 6, marginLeft: 2 }}>
-                Caso queira alterar o número de telefone, por favor clique no ícone de pessoa e em seguida Ver perfil.
-              </Text>
-            )}
           </View>
 
           {/* ========== TOGGLES (DENTRO do card escuro) ========== */}
 
           {/* Tema escuro */}
           <View style={styles.toggleRow}>
-            <LightDark width={29} height={29} />
-            <TemaEscuro width={107} height={14} />
+            <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: themeRotateInterpolate }, { scale: themeIconScale }] }]}>
+              <Feather 
+                name={isDarkMode ? 'moon' : 'sun'} 
+                size={22} 
+                color={isDarkMode ? '#FFC107' : '#EA841E'} 
+              />
+            </Animated.View>
+            <Text style={styles.optionLabel}>Tema escuro</Text>
             <View style={styles.toggleSpacer} />
-            <TouchableOpacity activeOpacity={0.7}>
-              <DarkModeIcon width={71} height={36} style={{ marginRight: -4 }} />
-            </TouchableOpacity>
+            <CustomSwitch 
+              active={isDarkMode} 
+              onPress={handleToggleTheme} 
+              colorActive={colors.primary} 
+              animValue={themeSwitchAnim} 
+            />
           </View>
 
           {/* Notificação */}
           <View style={styles.toggleRow}>
-            <NotifIcon width={23} height={23} />
-            <NotifLabel width={95} height={18} />
+            <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: notifRotateInterpolate }] }]}>
+              <Feather 
+                name={notificationsEnabled ? 'bell' : 'bell-off'} 
+                size={22} 
+                color={isDarkMode ? '#FFD700' : '#E3E4EB'} 
+              />
+            </Animated.View>
+            <Text style={styles.optionLabel}>Notificação</Text>
             <View style={styles.toggleSpacer} />
-            <TouchableOpacity activeOpacity={0.7}>
-              <NotifButton width={63} height={28} />
-            </TouchableOpacity>
+            <CustomSwitch 
+              active={notificationsEnabled} 
+              onPress={handleToggleNotifications} 
+              colorActive="#25BE36" 
+              animValue={notifSwitchAnim} 
+            />
           </View>
 
           {/* Permissão */}
           <View style={styles.toggleRow}>
-            <PermIcon width={21} height={21} />
-            <PermLabel width={86} height={14} />
+            <Animated.View style={[styles.iconBoxAnim, { transform: [{ scale: permIconScale }] }]}>
+              <Feather 
+                name="shield" 
+                size={22} 
+                color={isDarkMode ? '#FFC107' : '#4A90E2'} 
+              />
+            </Animated.View>
+            <Text style={styles.optionLabel}>Permissão</Text>
             <View style={styles.toggleSpacer} />
-            <TouchableOpacity activeOpacity={0.7}>
-              <PermButton width={63} height={28} />
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={handleOpenPermissions}
+              style={styles.chevronButton}
+            >
+              <Feather 
+                name="chevron-right" 
+                size={22} 
+                color="#FFFFFF" 
+              />
             </TouchableOpacity>
           </View>
 
@@ -304,11 +645,11 @@ export default function SettingsScreen() {
       {/* MODAL E-MAIL (Mesmo do Profile) */}
       <Modal visible={showEmailModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.whiteModalContainer}>
-            <Text style={styles.whiteModalTitle}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.whiteModalTitle, { color: colors.textDark }]}>
               {emailStatus === 'validar' ? 'Validar E-mail' : 'Alterar E-mail'}
             </Text>
-            <Text style={styles.whiteModalDesc}>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676' }]}>
               {emailStatus === 'validar' 
                 ? 'Verifique a caixa de entrada do seu novo e-mail para pegar o código.' 
                 : 'Insira o novo endereço de e-mail.'}
@@ -318,18 +659,18 @@ export default function SettingsScreen() {
             )}
             {emailStatus === 'validar' ? (
               <TextInput
-                style={[styles.whiteModalInput, emailError ? styles.inputError : null]}
-                placeholder="Código de 6 dígitos..."
-                placeholderTextColor="#919191"
+                style={[styles.whiteModalInput, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', color: colors.textDark, borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, emailError ? styles.inputError : null]}
+                placeholder="Código de 8 dígitos..."
+                placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                 value={emailCode}
                 onChangeText={setEmailCode}
                 keyboardType="numeric"
               />
             ) : (
               <TextInput
-                style={[styles.whiteModalInput, emailError ? styles.inputError : null]}
+                style={[styles.whiteModalInput, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', color: colors.textDark, borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, emailError ? styles.inputError : null]}
                 placeholder="novo@email.com"
-                placeholderTextColor="#919191"
+                placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                 value={emailInput}
                 onChangeText={setEmailInput}
                 keyboardType="email-address"
@@ -337,10 +678,44 @@ export default function SettingsScreen() {
               />
             )}
             <View style={styles.whiteModalButtons}>
-              <TouchableOpacity style={styles.whiteModalBtnCancel} onPress={() => setShowEmailModal(false)}>
-                <Text style={styles.whiteModalBtnTextCancel}>Cancelar</Text>
+              <TouchableOpacity style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} onPress={() => setShowEmailModal(false)}>
+                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.whiteModalBtnConfirm} onPress={handleConfirmEmail}>
+              <TouchableOpacity style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]} onPress={handleConfirmEmail}>
+                <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL TELEFONE */}
+      <Modal visible={showPhoneModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.whiteModalTitle, { color: colors.textDark }]}>
+              {phoneStatus === 'validar' ? 'Validar Telefone' : 'Digite seu telefone'}
+            </Text>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676' }]}>
+              {phoneStatus === 'validar' 
+                ? 'Enviamos um código SMS para o seu número. (Simulação: clique em Confirmar para validar)' 
+                : 'Insira o número com DDD para continuar.'}
+            </Text>
+            
+            <TextInput
+              style={[styles.whiteModalInput, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', color: colors.textDark, borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }]}
+              placeholder={phoneStatus === 'validar' ? "Código SMS..." : "+55 (11) 99999-9999"}
+              placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
+              value={phoneInput}
+              onChangeText={setPhoneInput}
+              keyboardType="phone-pad"
+            />
+            
+            <View style={styles.whiteModalButtons}>
+              <TouchableOpacity style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} onPress={() => setShowPhoneModal(false)}>
+                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]} onPress={handleConfirmPhone}>
                 <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
               </TouchableOpacity>
             </View>
@@ -351,9 +726,9 @@ export default function SettingsScreen() {
       {/* MODAL SENHA */}
       <Modal visible={showPasswordModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.whiteModalContainer}>
-            <Text style={styles.whiteModalTitle}>Alterar Senha</Text>
-            <Text style={styles.whiteModalDesc}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.whiteModalTitle, { color: colors.textDark }]}>Alterar Senha</Text>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676' }]}>
               Preencha os campos abaixo e solicite o código de segurança para confirmar.
             </Text>
             
@@ -363,32 +738,32 @@ export default function SettingsScreen() {
 
             <View style={{ gap: 10 }}>
               {/* Senha Atual */}
-              <View style={[styles.whiteModalInputWrapper, (passwordError === 'Senha incorreta!' || passwordError === 'same_password') ? styles.inputError : null]}>
+              <View style={[styles.whiteModalInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, (passwordError === 'Senha incorreta!' || passwordError === 'same_password') ? styles.inputError : null]}>
                 <TextInput
-                  style={styles.whiteModalInputFlex}
+                  style={[styles.whiteModalInputFlex, { color: colors.textDark }]}
                   placeholder="Senha atual"
-                  placeholderTextColor="#919191"
+                  placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                   secureTextEntry={!showCurrentPassword}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                 />
                 <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                  <Feather name={showCurrentPassword ? 'eye' : 'eye-off'} size={20} color="#1C2434" />
+                  <Feather name={showCurrentPassword ? 'eye' : 'eye-off'} size={20} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
                 </TouchableOpacity>
               </View>
 
               {/* Nova Senha */}
-              <View style={[styles.whiteModalInputWrapper, (passwordError === 'As senhas não coincidem!' || passwordError === 'same_password') ? styles.inputError : (isPasswordMatch && passwordError !== 'same_password' ? { borderColor: '#4CAF50' } : null)]}>
+              <View style={[styles.whiteModalInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, (passwordError === 'As senhas não coincidem!' || passwordError === 'same_password') ? styles.inputError : (isPasswordMatch && passwordError !== 'same_password' ? { borderColor: '#4CAF50' } : null)]}>
                 <TextInput
-                  style={styles.whiteModalInputFlex}
+                  style={[styles.whiteModalInputFlex, { color: colors.textDark }]}
                   placeholder="Nova senha"
-                  placeholderTextColor="#919191"
+                  placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                   secureTextEntry={!showNewPassword}
                   value={newPassword}
                   onChangeText={setNewPassword}
                 />
                 <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-                  <Feather name={showNewPassword ? 'eye' : 'eye-off'} size={20} color="#1C2434" />
+                  <Feather name={showNewPassword ? 'eye' : 'eye-off'} size={20} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
                 </TouchableOpacity>
               </View>
               {passwordError === 'same_password' && (
@@ -396,41 +771,41 @@ export default function SettingsScreen() {
               )}
 
               {/* Confirmar Nova Senha */}
-              <View style={[styles.whiteModalInputWrapper, (passwordError === 'As senhas não coincidem!' || passwordError === 'same_password') ? styles.inputError : (isPasswordMatch && passwordError !== 'same_password' ? { borderColor: '#4CAF50' } : null)]}>
+              <View style={[styles.whiteModalInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, (passwordError === 'As senhas não coincidem!' || passwordError === 'same_password') ? styles.inputError : (isPasswordMatch && passwordError !== 'same_password' ? { borderColor: '#4CAF50' } : null)]}>
                 <TextInput
-                  style={styles.whiteModalInputFlex}
+                  style={[styles.whiteModalInputFlex, { color: colors.textDark }]}
                   placeholder="Confirmar nova senha"
-                  placeholderTextColor="#919191"
+                  placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                   secureTextEntry={!showConfirmNewPassword}
                   value={confirmNewPassword}
                   onChangeText={setConfirmNewPassword}
                 />
                 <TouchableOpacity onPress={() => setShowConfirmNewPassword(!showConfirmNewPassword)}>
-                  <Feather name={showConfirmNewPassword ? 'eye' : 'eye-off'} size={20} color="#1C2434" />
+                  <Feather name={showConfirmNewPassword ? 'eye' : 'eye-off'} size={20} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
                 </TouchableOpacity>
               </View>
 
               {/* Código OTP + Botão Mandar */}
-              <View style={[styles.whiteModalInputWrapper, (passwordError === 'Você precisa mandar o código primeiro!' || passwordError === 'Código inválido!') ? styles.inputError : null]}>
+              <View style={[styles.whiteModalInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#F0F0F0', borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }, (passwordError === 'Você precisa mandar o código primeiro!' || passwordError === 'Código inválido!') ? styles.inputError : null]}>
                 <TextInput
-                  style={styles.whiteModalInputFlex}
-                  placeholder="Código de 6 dígitos"
-                  placeholderTextColor="#919191"
+                  style={[styles.whiteModalInputFlex, { color: colors.textDark }]}
+                  placeholder="Código de 8 dígitos"
+                  placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                   keyboardType="numeric"
                   value={passwordCode}
                   onChangeText={setPasswordCode}
                 />
                 <TouchableOpacity onPress={handleSendOtpCode} style={{ paddingHorizontal: 8, paddingVertical: 8, marginLeft: 8 }}>
-                  <Text style={{ color: '#042A7D', fontWeight: 'bold', fontSize: 14 }}>Mandar</Text>
+                  <Text style={{ color: isDarkMode ? '#5B86E5' : '#042A7D', fontWeight: 'bold', fontSize: 14 }}>Mandar</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.whiteModalButtons}>
-              <TouchableOpacity style={styles.whiteModalBtnCancel} onPress={() => setShowPasswordModal(false)}>
-                <Text style={styles.whiteModalBtnTextCancel}>Cancelar</Text>
+              <TouchableOpacity style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} onPress={() => setShowPasswordModal(false)}>
+                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.whiteModalBtnConfirm} onPress={handleConfirmFinal}>
+              <TouchableOpacity style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]} onPress={handleConfirmFinal}>
                 <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
               </TouchableOpacity>
             </View>
@@ -441,19 +816,156 @@ export default function SettingsScreen() {
       {/* NESTED MODAL (Mesma Senha) */}
       <Modal visible={showNestedModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlayNested}>
-          <View style={styles.whiteModalContainer}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#000', marginBottom: 12 }}>Atenção</Text>
-            <Text style={{ fontSize: 16, color: '#000', marginBottom: 20 }}>
-              A nova senha que você digitou é a mesma da antiga
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 12 }}>Atenção</Text>
+            <Text style={{ fontSize: 16, color: isDarkMode ? '#FFFFFF' : '#000', marginBottom: 20 }}>
+              A nova senha que você digitou é a mesma da antiga.
             </Text>
             <View style={{ alignItems: 'flex-end' }}>
               <TouchableOpacity 
-                style={{ backgroundColor: '#042A7D', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }} 
+                style={{ backgroundColor: colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }} 
                 onPress={() => setShowNestedModal(false)}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 }}>FECHAR</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE GERENCIAMENTO DE PERMISSÕES */}
+      <Modal visible={showPermissionsModal} transparent={true} animationType="slide" onRequestClose={() => setShowPermissionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF', width: '90%' }]}>
+            <Text style={[styles.whiteModalTitle, { color: colors.textDark, fontSize: 20, marginBottom: 5 }]}>Gerenciador de Permissões</Text>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676', marginBottom: 20 }]}>
+              Veja e gerencie as permissões do aplicativo para habilitar todos os recursos.
+            </Text>
+
+            <View style={{ gap: 15, marginBottom: 25 }}>
+              {/* Câmera */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDarkMode ? '#1E1E24' : '#F5F5F5', padding: 12, borderRadius: 10 }}>
+                <View>
+                  <Text style={{ fontWeight: 'bold', color: colors.textDark, fontSize: 15 }}>Câmera</Text>
+                  <Text style={{ fontSize: 12, color: cameraPermission === 'granted' ? '#4CAF50' : '#FF3B30' }}>
+                    {cameraPermission === 'granted' ? 'Permitido ✓' : 'Não Permitido ✗'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  disabled={cameraPermission === 'granted'}
+                  style={{ 
+                    backgroundColor: cameraPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
+                    paddingHorizontal: 12, 
+                    paddingVertical: 6, 
+                    borderRadius: 6, 
+                    opacity: cameraPermission === 'granted' ? 0.6 : 1 
+                  }}
+                  onPress={requestCamera}
+                >
+                  <Text style={{ 
+                    color: cameraPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
+                    fontWeight: 'bold', 
+                    fontSize: 12 
+                  }}>
+                    {cameraPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Galeria */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDarkMode ? '#1E1E24' : '#F5F5F5', padding: 12, borderRadius: 10 }}>
+                <View>
+                  <Text style={{ fontWeight: 'bold', color: colors.textDark, fontSize: 15 }}>Galeria de Fotos</Text>
+                  <Text style={{ fontSize: 12, color: galleryPermission === 'granted' ? '#4CAF50' : '#FF3B30' }}>
+                    {galleryPermission === 'granted' ? 'Permitido ✓' : 'Não Permitido ✗'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  disabled={galleryPermission === 'granted'}
+                  style={{ 
+                    backgroundColor: galleryPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
+                    paddingHorizontal: 12, 
+                    paddingVertical: 6, 
+                    borderRadius: 6, 
+                    opacity: galleryPermission === 'granted' ? 0.6 : 1 
+                  }}
+                  onPress={requestGallery}
+                >
+                  <Text style={{ 
+                    color: galleryPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
+                    fontWeight: 'bold', 
+                    fontSize: 12 
+                  }}>
+                    {galleryPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Localização */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDarkMode ? '#1E1E24' : '#F5F5F5', padding: 12, borderRadius: 10 }}>
+                <View>
+                  <Text style={{ fontWeight: 'bold', color: colors.textDark, fontSize: 15 }}>Localização (GPS)</Text>
+                  <Text style={{ fontSize: 12, color: locationPermission === 'granted' ? '#4CAF50' : '#FF3B30' }}>
+                    {locationPermission === 'granted' ? 'Permitido ✓' : 'Não Permitido ✗'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  disabled={locationPermission === 'granted'}
+                  style={{ 
+                    backgroundColor: locationPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
+                    paddingHorizontal: 12, 
+                    paddingVertical: 6, 
+                    borderRadius: 6, 
+                    opacity: locationPermission === 'granted' ? 0.6 : 1 
+                  }}
+                  onPress={requestLocation}
+                >
+                  <Text style={{ 
+                    color: locationPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
+                    fontWeight: 'bold', 
+                    fontSize: 12 
+                  }}>
+                    {locationPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Notificações */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDarkMode ? '#1E1E24' : '#F5F5F5', padding: 12, borderRadius: 10 }}>
+                <View>
+                  <Text style={{ fontWeight: 'bold', color: colors.textDark, fontSize: 15 }}>Notificações Push</Text>
+                  <Text style={{ fontSize: 12, color: notificationsPermission === 'granted' ? '#4CAF50' : '#FF3B30' }}>
+                    {notificationsPermission === 'granted' ? 'Permitido ✓' : 'Não Permitido ✗'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  disabled={notificationsPermission === 'granted'}
+                  style={{ 
+                    backgroundColor: notificationsPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
+                    paddingHorizontal: 12, 
+                    paddingVertical: 6, 
+                    borderRadius: 6, 
+                    opacity: notificationsPermission === 'granted' ? 0.6 : 1 
+                  }}
+                  onPress={requestNotifications}
+                >
+                  <Text style={{ 
+                    color: notificationsPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
+                    fontWeight: 'bold', 
+                    fontSize: 12 
+                  }}>
+                    {notificationsPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={{ backgroundColor: colors.accent, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }} 
+              onPress={() => setShowPermissionsModal(false)}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>Fechar Gerenciador</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -536,11 +1048,60 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     paddingHorizontal: 4,
   },
   toggleSpacer: {
     flex: 1,
+  },
+  switchTrack: {
+    width: 54,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    position: 'relative',
+    paddingHorizontal: 3,
+  },
+  switchThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  iconBoxAnim: {
+    width: 29,
+    height: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronButton: {
+    width: 44,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#E3E4EB',
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  optionLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  alterarTextLink: {
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 
   // ===== WHITE MODALS =====

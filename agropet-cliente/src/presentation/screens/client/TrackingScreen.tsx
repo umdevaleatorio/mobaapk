@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity } from 'react-native';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { CatalogHeader } from '../../components/CatalogHeader';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // === IMPORTAÇÃO DOS SVGs (assets/tela12) ===
 
@@ -61,9 +62,10 @@ import OpcoesLabel8 from '../../assets/tela11/barra de baixo/Opções.svg';
 export default function TrackingScreen({ navigation }: any) {
   const { toggleMenu } = useUserMenu();
   const [searchText, setSearchText] = useState('');
+  const { isDarkMode, colors } = useTheme();
 
   return (
-    <View style={styles.mainContainer}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
       
       {/* ========== HEADER ========== */}
       {/* Header Unificado */}
@@ -75,21 +77,29 @@ export default function TrackingScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* Título Central */}
-        <View style={{ marginBottom: 30 }}>
-          <SituacaoTit width={236} height={20} />
+        {/* Título Esquerdo */}
+        <View style={{ marginBottom: 30, alignItems: 'flex-start' }}>
+          {isDarkMode ? (
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFFFFF', height: 20 }}>Situação da entrega</Text>
+          ) : (
+            <SituacaoTit width={236} height={20} />
+          )}
         </View>
 
         {/* ==================== TRACKING FLOW ==================== */}
 
         {/* STEP 1: Confirmado (Green) */}
         <View style={styles.stepRow}>
-          <View style={styles.card}>
-            <View style={styles.iconBox}>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB' }]}>
+            <View style={[styles.iconBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <S1Icon width={45} height={45} />
             </View>
-            <View style={[styles.middleBox, { borderRightWidth: 0, alignItems: 'center' }]}>
-              <S1Text width={195} height={17} />
+            <View style={[styles.middleBox, { borderRightWidth: 0, alignItems: 'center', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
+              {isDarkMode ? (
+                <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#FFFFFF' }}>Pedido confirmado!</Text>
+              ) : (
+                <S1Text width={195} height={17} />
+              )}
             </View>
           </View>
           <View style={styles.outerStatus}>
@@ -102,13 +112,19 @@ export default function TrackingScreen({ navigation }: any) {
 
         {/* STEP 2: Preparação (Green) */}
         <View style={styles.stepRow}>
-          <View style={styles.card}>
-            <View style={styles.iconBox}>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB' }]}>
+            <View style={[styles.iconBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <S2Icon width={45} height={45} />
             </View>
-            <View style={styles.middleBox}>
+            <View style={[styles.middleBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <View style={styles.subTaskRow}>
-                <S2Text width={132} height={58} />
+                {isDarkMode ? (
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF', lineHeight: 18 }}>
+                    Pedido em preparação{"\n"}Pedido preparado!
+                  </Text>
+                ) : (
+                  <S2Text width={132} height={58} />
+                )}
                 <View style={styles.subTaskIcons}>
                   <S2SubCheck1 width={15} height={15} style={{ marginBottom: 18 }} />
                   <S2SubCheck2 width={15} height={15} />
@@ -116,7 +132,14 @@ export default function TrackingScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.rightTimeBox}>
-               <S2Time width={55} height={40} />
+               {isDarkMode ? (
+                 <View style={{ alignItems: 'center' }}>
+                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 2 }}>Horário</Text>
+                   <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>12:15</Text>
+                 </View>
+               ) : (
+                 <S2Time width={55} height={40} />
+               )}
             </View>
           </View>
           <View style={styles.outerStatus}>
@@ -129,13 +152,19 @@ export default function TrackingScreen({ navigation }: any) {
 
         {/* STEP 3: Saiu para a entrega (Yellow) */}
         <View style={styles.stepRow}>
-          <View style={styles.card}>
-            <View style={styles.iconBox}>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB' }]}>
+            <View style={[styles.iconBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <S3Icon width={50} height={40} />
             </View>
-            <View style={styles.middleBox}>
+            <View style={[styles.middleBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <View style={styles.subTaskRow}>
-                <S3Text width={110} height={58} />
+                {isDarkMode ? (
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF', lineHeight: 18 }}>
+                    Saiu para entrega{"\n"}À caminho
+                  </Text>
+                ) : (
+                  <S3Text width={110} height={58} />
+                )}
                 <View style={styles.subTaskIcons}>
                   <S3SubCheck1 width={15} height={15} style={{ marginBottom: 18 }} />
                   <S3SubWarn width={15} height={15} />
@@ -143,7 +172,14 @@ export default function TrackingScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.rightTimeBox}>
-               <S3Time width={55} height={40} />
+               {isDarkMode ? (
+                 <View style={{ alignItems: 'center' }}>
+                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 2 }}>Horário</Text>
+                   <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>12:45</Text>
+                 </View>
+               ) : (
+                 <S3Time width={55} height={40} />
+               )}
             </View>
           </View>
           <View style={styles.outerStatus}>
@@ -156,20 +192,35 @@ export default function TrackingScreen({ navigation }: any) {
 
         {/* STEP 4: Entrega Concluída (Red) */}
         <View style={styles.stepRow}>
-          <View style={styles.card}>
-            <View style={styles.iconBox}>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB' }]}>
+            <View style={[styles.iconBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <S4Icon width={45} height={45} />
             </View>
-            <View style={styles.middleBox}>
+            <View style={[styles.middleBox, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : '#FFFFFF' }]}>
               <View style={styles.subTaskRow}>
-                <S4Text width={132} height={15} style={{ alignSelf: 'center' }} />
+                {isDarkMode ? (
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF', alignSelf: 'center' }}>
+                    Entrega concluída!
+                  </Text>
+                ) : (
+                  <S4Text width={132} height={15} style={{ alignSelf: 'center' }} />
+                )}
                 <S4SubWarn width={15} height={15} style={{ marginLeft: 5 }} />
               </View>
             </View>
             {/* Divisão direita de tempo inativo */}
             <View style={styles.rightTimeBox}>
-               <S4Time width={48} height={14} style={{ marginBottom: 6 }} />
-               <S4Clock width={24} height={24} />
+               {isDarkMode ? (
+                 <View style={{ alignItems: 'center' }}>
+                   <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 6, textAlign: 'center' }}>Horário</Text>
+                   <S4Clock width={24} height={24} fill="#FFFFFF" stroke="#FFFFFF" />
+                 </View>
+               ) : (
+                 <>
+                   <S4Time width={48} height={14} style={{ marginBottom: 6 }} />
+                   <S4Clock width={24} height={24} />
+                 </>
+               )}
             </View>
           </View>
           <View style={styles.outerStatus}>
@@ -181,39 +232,71 @@ export default function TrackingScreen({ navigation }: any) {
 
       {/* ========== BARRA INFERIOR (Tudo Inativo) ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={styles.tabBarInner}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
-            <View style={styles.iconBgInactive}>
-              <HomeIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+              {isDarkMode ? (
+                <HomeIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+              ) : (
+                <HomeIcon8 width={32} height={32} />
+              )}
             </View>
-            <MenuLabel8 width={33} height={9} />
+            {isDarkMode ? (
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Menu</Text>
+            ) : (
+              <MenuLabel8 width={33} height={9} />
+            )}
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={styles.iconBgInactive}>
-              <MapIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+              {isDarkMode ? (
+                <MapIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+              ) : (
+                <MapIcon8 width={32} height={32} />
+              )}
             </View>
-            <MapaLabel8 width={32} height={12} />
+            {isDarkMode ? (
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Mapa</Text>
+            ) : (
+              <MapaLabel8 width={32} height={12} />
+            )}
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={styles.iconBgInactive}>
-              <CartIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+              {isDarkMode ? (
+                <CartIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+              ) : (
+                <CartIcon8 width={32} height={32} />
+              )}
             </View>
-            <CarrinhoLabel8 width={52} height={10} />
+            {isDarkMode ? (
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Carrinho</Text>
+            ) : (
+              <CarrinhoLabel8 width={52} height={10} />
+            )}
           </TouchableOpacity>
 
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
-            <View style={styles.iconBgInactive}>
-              <GearIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+              {isDarkMode ? (
+                <GearIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+              ) : (
+                <GearIcon8 width={32} height={32} />
+              )}
             </View>
-            <OpcoesLabel8 width={42} height={12} />
+            {isDarkMode ? (
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Opções</Text>
+            ) : (
+              <OpcoesLabel8 width={42} height={12} />
+            )}
           </TouchableOpacity>
         </View>
       </View>

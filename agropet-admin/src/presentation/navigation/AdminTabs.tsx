@@ -9,6 +9,7 @@ import ManageProductsScreen from '../screens/admin/ManageProductsScreen';
 import AdminSettingsScreen from '../screens/admin/AdminSettingsScreen';
 import ProductCreateScreen from '../screens/admin/ProductCreateScreen';
 import ProductEditScreen from '../screens/admin/ProductEditScreen';
+import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
 
 // SVGs Admin Barra (Tela 2)
 import HomeIcon from '../assets/tela2/barra/Home.svg';
@@ -72,6 +73,11 @@ export default function AdminTabs() {
         component={ProductEditScreen} 
         options={{ tabBarButton: () => null }} 
       />
+      <Tab.Screen 
+        name="AdminProfile" 
+        component={AdminProfileScreen} 
+        options={{ tabBarButton: () => null }} 
+      />
       <Tab.Screen name="Opções" component={AdminSettingsScreen} />
     </Tab.Navigator>
   );
@@ -114,6 +120,12 @@ const tabConfigs: any = {
     Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
     Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
+  AdminProfile: {
+    Home: { Icon: HomeIcon7, Label: HomeLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, Label: MapLabel7, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
+    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+  },
 };
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
@@ -144,6 +156,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
           const { Icon, Label, labelW, labelH } = config;
 
+          const activeBgStyle = isTabActive
+            ? { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+            : { width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const };
+
           return (
             <React.Fragment key={route.key}>
               {index > 0 && <View style={styles.tabSeparator} />}
@@ -152,10 +168,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 style={styles.tabItem}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconBg}>
-                  {isTabActive && (
-                    <FundoAtivoSvg width={51} height={41} style={{ position: 'absolute' }} />
-                  )}
+                <View style={activeBgStyle}>
                   <Icon width={32} height={32} />
                 </View>
                 <Label width={labelW} height={labelH} />
@@ -198,11 +211,15 @@ const styles = StyleSheet.create({
   iconBg: {
     width: 51,
     height: 41,
-    borderRadius: 20,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBgActive: {
     backgroundColor: '#E3DAD9',
+    borderWidth: 1.5,
+    borderColor: '#8A7268',
+    borderRadius: 15,
+    overflow: 'hidden',
   },
 });

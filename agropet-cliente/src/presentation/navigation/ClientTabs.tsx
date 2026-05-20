@@ -5,7 +5,7 @@ import HomeScreen from '../screens/client/HomeScreen';
 import MapScreen from '../screens/client/MapScreen';
 import CartScreen from '../screens/client/CartScreen';
 import SettingsScreen from '../screens/client/SettingsScreen';
-
+import { useTheme } from '../contexts/ThemeContext';
 // === BARRA SVGs Tela 4 (Menu ativo, outros inativos) ===
 import HomeIcon from '../assets/tela4/barra/Home.svg';
 import MapIcon from '../assets/tela4/barra/Map.svg';
@@ -101,10 +101,12 @@ const tabConfigs: Record<string, Record<string, { Icon: any; Label: any; labelW:
  * - Labels: SVGs com tamanho exato do Figma
  */
 function CustomTabBar({ state, navigation }: any) {
+  const { isDarkMode } = useTheme();
+
   return (
     <View style={styles.tabBarOuter}>
       {/* Barra Central (#E3E4EB, rx=30) */}
-      <View style={styles.tabBarInner}>
+      <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const activeTab = state.routes[state.index].name;
@@ -122,22 +124,48 @@ function CustomTabBar({ state, navigation }: any) {
             }
           };
 
+          const iconColor = isDarkMode ? (isFocused ? '#FFD700' : '#FFFFFF') : undefined;
+
+          const activeBgStyle = isFocused
+            ? (isDarkMode
+                ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+                : { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+              )
+            : { width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const };
+
           return (
             <React.Fragment key={route.name}>
               {/* Separador: 1x49, #8A7268 (antes de cada tab exceto primeiro) */}
-              {index > 0 && <View style={styles.tabSeparator} />}
+              {index > 0 && (
+                <View 
+                  style={[
+                    styles.tabSeparator, 
+                    { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }
+                  ]} 
+                />
+              )}
 
               <TouchableOpacity
                 style={styles.tabItem}
                 onPress={onPress}
                 activeOpacity={0.7}
               >
-                {/* Fundo do ícone (51x41, rx=20, #E3DAD9 somente quando ativo) */}
-                <View style={[styles.iconBg, isFocused && styles.iconBgActive]}>
-                  <Icon width={32} height={32} />
+                {/* Fundo do ícone (51x41, rx=15, #E3DAD9 com borda #8A7268 quando ativo no modo claro, ou #FFFFFF sem borda no tema escuro) */}
+                <View style={activeBgStyle}>
+                  <Icon 
+                    width={32} 
+                    height={32} 
+                    fill={iconColor} 
+                    stroke={iconColor} 
+                  />
                 </View>
                 {/* Label SVG */}
-                <Label width={labelW} height={labelH} />
+                <Label 
+                  width={labelW} 
+                  height={labelH} 
+                  fill={iconColor} 
+                  stroke={iconColor} 
+                />
               </TouchableOpacity>
             </React.Fragment>
           );
@@ -181,16 +209,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
-  // Fundo do ícone: SVG 51x41, rx=20
+  // Fundo do ícone: Retângulo com borda arredondada 51x41
   iconBg: {
     width: 51,
     height: 41,
-    borderRadius: 20,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Fundo ativo: #E3DAD9
+  // Fundo ativo: #E3DAD9 com borda #8A7268 (somente quando focado no modo claro)
   iconBgActive: {
     backgroundColor: '#E3DAD9',
+    borderWidth: 1.5,
+    borderColor: '#8A7268',
+    borderRadius: 15,
+    overflow: 'hidden',
   },
 });

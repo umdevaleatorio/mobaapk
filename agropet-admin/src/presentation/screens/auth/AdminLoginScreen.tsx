@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -16,7 +17,6 @@ import { supabase } from '../../../data/datasources/supabase/client';
 // SVG imports (Tela 1 Adm);
 import MiniLogo from '../../assets/tela1/MiniLogo.svg';
 import LogoAgropet from '../../assets/tela1/LogoAgropet.svg';
-import BemVindo from '../../assets/tela1/BemVindo.svg';
 import CodigoLabel from '../../assets/tela1/CodigoLabel.svg';
 import SenhaLabel from '../../assets/tela1/SenhaLabel.svg';
 import EntrarTexto from '../../assets/tela1/EntrarTexto.svg';
@@ -75,7 +75,8 @@ export default function AdminLoginScreen() {
 
           {/* Texto Bem-vindo de volta, Administrador! */}
           <View style={styles.bemVindoWrapper}>
-            <BemVindo width={274} height={70} />
+            <Text style={styles.bemVindoTitle}>Bem-vindo de volta,</Text>
+            <Text style={styles.bemVindoTitle}>Administrador!</Text>
           </View>
 
           {/* Card do formulário (#E96310, borderRadius 25) */}
@@ -200,6 +201,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: -20,
     marginBottom: 20,
+  },
+  bemVindoTitle: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: Colors.white,
+    textAlign: 'center',
+    lineHeight: 38,
   },
 
 

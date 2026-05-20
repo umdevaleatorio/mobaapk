@@ -8,6 +8,7 @@ import {
   Text,
 } from 'react-native';
 import { useUserMenu } from '../contexts/UserMenuContext';
+import { useNavigation } from '@react-navigation/native';
 
 import MenuInicialTitle from '../assets/tela2/header/Menu inicial.svg';
 import OpcoesTitle from '../assets/tela4/parte superior/Opções.svg';
@@ -23,18 +24,32 @@ import AdmIcon from '../assets/tela2/header/Adm.svg';
 import MiniLogo from '../assets/tela2/header/Mini Logo.svg';
 
 interface AdminHeaderProps {
-  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto';
+  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm';
   searchValue?: string;
   onSearchChange?: (text: string) => void;
 }
 
-export default function AdminHeader({ title = 'home', searchValue, onSearchChange }: AdminHeaderProps) {
+export default function AdminHeader({ title = 'home', searchValue = '', onSearchChange }: AdminHeaderProps) {
   const { toggleMenu } = useUserMenu();
+  const navigation = useNavigation<any>();
+  const [localSearch, setLocalSearch] = React.useState(searchValue);
+
+  React.useEffect(() => {
+    setLocalSearch(searchValue);
+  }, [searchValue]);
+
+  const triggerSearch = () => {
+    if (onSearchChange) {
+      onSearchChange(localSearch);
+    }
+  };
 
   return (
     <View style={styles.headerContainer}>
       {/* Mini Logo */}
-      <MiniLogo width={36} height={36} />
+      <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Home')}>
+        <MiniLogo width={36} height={36} />
+      </TouchableOpacity>
 
       {/* Title - Left aligned next to MiniLogo */}
       <View style={[styles.titleWrapper, { marginLeft: 8 }]}>
@@ -45,11 +60,13 @@ export default function AdminHeader({ title = 'home', searchValue, onSearchChang
         {title === 'historico_vendas' && <HistoricoVendasTitle width={105} height={40} />}
         {title === 'gerenciar' && <GerenciarProdutosTitle width={80} height={38} />}
         {title === 'registrar_produto' && <RegistrarProdutoTitle width={80} height={38} />}
+        {title === 'editar_produto' && <Text style={styles.textTitle}>Editar produto</Text>}
+        {title === 'perfil_adm' && <Text style={styles.textTitle}>Perfil adm</Text>}
       </View>
 
       {/* Right side: Adm text or Search Bar + Person Icon */}
       <View style={styles.rightGroup}>
-        {(title === 'gerenciar' || title === 'registrar_produto') ? (
+        {(title === 'gerenciar' || title === 'registrar_produto' || title === 'editar_produto') ? (
           <View style={styles.searchBarContainer}>
             {/* SVG as background - shows magnifying glass + placeholder text */}
             <BarraPesquisaSVG 
@@ -61,9 +78,11 @@ export default function AdminHeader({ title = 'home', searchValue, onSearchChang
             {/* When user types, the text overlays the SVG placeholder */}
             <TextInput 
               style={styles.searchInput}
-              value={searchValue}
-              onChangeText={onSearchChange}
+              value={localSearch}
+              onChangeText={setLocalSearch}
               placeholderTextColor="transparent"
+              returnKeyType="search"
+              onSubmitEditing={triggerSearch}
             />
           </View>
         ) : (

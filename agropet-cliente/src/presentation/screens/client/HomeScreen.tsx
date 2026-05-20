@@ -12,12 +12,17 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Colors from '../../theme/colors';
+import { useTheme } from '../../contexts/ThemeContext';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../data/datasources/supabase/client';
+
 import { CartContext } from '../../contexts/CartContext';
 import { CatalogHeader, CatalogFilter } from '../../components/CatalogHeader';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { useFilter, isProductInCategories } from '../../contexts/FilterContext';
 
 // === PRODUTO SVGs ===
-import AddCartIcon from '../../assets/tela4/produto/AddCartIcon.svg';
+// AddCartIcon substituído por Feather
 import VerItemSvg from '../../assets/tela4/produto/VerItem.svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -26,11 +31,14 @@ const PHOTO_WIDTH = CARD_WIDTH - 20;
 const PHOTO_HEIGHT = (PHOTO_WIDTH * 120) / 129;
 
 export default function HomeScreen() {
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState('');
+  const { searchText, setSearchText, selectedCategories } = useFilter();
   const { addToCart } = useContext(CartContext);
+
+  const [esgotadoAlert, setEsgotadoAlert] = useState<string | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -44,43 +52,82 @@ export default function HomeScreen() {
     setLoading(false);
   };
 
+  const checkRecentEsgotados = async () => {
+    try {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, updated_at')
+        .eq('active', false)
+        .gte('updated_at', oneDayAgo);
+        
+      if (error || !data || data.length === 0) return;
+      
+      const seenRaw = await SecureStore.getItemAsync('seen_esgotados');
+      const seenList: string[] = seenRaw ? JSON.parse(seenRaw) : [];
+      
+      const unseen = data.find(p => !seenList.includes(p.id));
+      if (unseen) {
+        setEsgotadoAlert(unseen.name);
+        seenList.push(unseen.id);
+        await SecureStore.setItemAsync('seen_esgotados', JSON.stringify(seenList));
+      }
+    } catch (e) {
+      console.log('Erro ao verificar esgotados:', e);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    checkRecentEsgotados();
   }, []);
 
-  const filteredProducts = products.filter(p =>
-    p.name?.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name?.toLowerCase().includes(searchText.toLowerCase());
+    const matchesCategory = isProductInCategories(p.name, selectedCategories);
+    return matchesSearch && matchesCategory;
+  });
 
   const renderProductCard = ({ item, index }: { item: any; index: number }) => (
     <View style={[
       styles.productCard,
-      { marginLeft: index % 2 === 0 ? 16 : 8, marginRight: index % 2 === 1 ? 16 : 8 }
+      { 
+        backgroundColor: colors.cardBackground,
+        marginLeft: index % 2 === 0 ? 16 : 8, 
+        marginRight: index % 2 === 1 ? 16 : 8 
+      }
     ]}>
       {/* Foto do produto */}
       <View style={styles.productImageWrapper}>
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
         ) : (
-          <View style={[styles.productImage, styles.noImage]}>
-            <Text style={styles.noImageText}>Sem Imagem</Text>
+          <View style={[styles.productImage, styles.noImage, { backgroundColor: isDarkMode ? '#3A3A44' : '#d9d9d9' }]}>
+            <Text style={[styles.noImageText, { color: isDarkMode ? '#888' : '#999' }]}>Sem Imagem</Text>
           </View>
         )}
       </View>
 
       {/* Nome do produto */}
-      <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+      <Text style={[styles.productName, { color: colors.textDark }]} numberOfLines={2}>{item.name}</Text>
 
       {/* Linha inferior: AddCartIcon | Preço + VerItem */}
       <View style={styles.productBottomRow}>
-        {/* Ícone carrinho (55x55, sem fundo extra) */}
-        <TouchableOpacity onPress={() => addToCart(item)} activeOpacity={0.7}>
-          <AddCartIcon width={55} height={55} />
+        {/* Ícone carrinho animado/customizado (substituindo o AddCartIcon SVG bugado) */}
+        <TouchableOpacity 
+          onPress={() => addToCart(item)} 
+          activeOpacity={0.7}
+          style={[styles.addCartBtn, { backgroundColor: isDarkMode ? '#1E1E1E' : '#1C2434' }]}
+        >
+          <MaterialIcons name="shopping-cart" size={26} color="#FFFFFF" />
+          <View style={styles.addCartPlusBadge}>
+            <Feather name="plus" size={9} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
 
         {/* Coluna: Preço + Ver Item, centralizado */}
         <View style={styles.priceAndButton}>
-          <Text style={styles.productPrice}>R$ {item.price?.toFixed(2)}</Text>
+          <Text style={[styles.productPrice, { color: colors.textDark }]}>R$ {item.price?.toFixed(2)}</Text>
           {/* Botão Ver Item: 80x30, rx=15, #EA841E */}
           <TouchableOpacity
             style={styles.verItemBtn}
@@ -95,17 +142,33 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header + Filtro compartilhados */}
       <CatalogHeader searchText={searchText} onSearchChange={setSearchText} />
+      
+      {esgotadoAlert && (
+        <View style={[
+          styles.esgotadoBanner,
+          { backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0', borderColor: '#FF3B30' }
+        ]}>
+          <Feather name="alert-circle" size={16} color="#FF3B30" style={{ marginRight: 8 }} />
+          <Text style={[styles.esgotadoBannerText, { color: isDarkMode ? '#FF8A8A' : '#D32F2F' }]} numberOfLines={2}>
+            Aviso: O produto "{esgotadoAlert}" esgotou e não está mais disponível no catálogo.
+          </Text>
+          <TouchableOpacity onPress={() => setEsgotadoAlert(null)} style={{ marginLeft: 'auto', paddingLeft: 10 }}>
+            <Feather name="x" size={16} color={isDarkMode ? '#FF8A8A' : '#D32F2F'} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <CatalogFilter />
 
       {/* ========== GRID DE PRODUTOS ========== */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <ActivityIndicator size="large" color={colors.primaryDark} />
         </View>
       ) : (
         <FlatList
@@ -117,7 +180,11 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Nenhum produto encontrado</Text>
+              <Text style={[styles.emptyText, { color: colors.textDark, textAlign: 'center', paddingHorizontal: 20 }]}>
+                {selectedCategories.length > 0 
+                  ? "Não temos produto desta categoria no momento, volte mais tarde!"
+                  : "Nenhum produto encontrado"}
+              </Text>
             </View>
           }
         />
@@ -219,5 +286,40 @@ const styles = StyleSheet.create({
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  addCartBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginRight: 4,
+  },
+  addCartPlusBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#25BE36',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  esgotadoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  esgotadoBannerText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    flexShrink: 1,
   },
 });

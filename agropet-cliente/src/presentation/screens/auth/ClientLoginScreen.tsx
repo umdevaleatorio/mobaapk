@@ -9,8 +9,12 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  Text,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
 import { supabase } from '../../../data/datasources/supabase/client';
 
@@ -34,6 +38,76 @@ export default function ClientLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // States para "Esqueci a senha"
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordCode, setPasswordCode] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const showErrorWithTimeout = (msg: string) => {
+    setPasswordError(msg);
+    setTimeout(() => {
+      setPasswordError((prev) => (prev === msg ? '' : prev));
+    }, 8000);
+  };
+
+  const handleSendOtpCode = async () => {
+    setPasswordError('');
+    if (!forgotEmail) {
+      showErrorWithTimeout('Preencha o e-mail primeiro para receber o código!');
+      return;
+    }
+    // Envia o e-mail de recuperação real pelo Supabase (se configurado para OTP)
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
+    if (error) {
+      showErrorWithTimeout('Erro ao enviar: ' + error.message);
+      return;
+    }
+    Alert.alert('Código Enviado!', 'Verifique sua caixa de e-mail para pegar o código de 8 dígitos.');
+  };
+
+  const handleConfirmFinal = async () => {
+    setPasswordError('');
+    if (!forgotEmail || !passwordCode || !newPassword || !confirmNewPassword) {
+      showErrorWithTimeout('Preencha todos os campos e o código!');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      showErrorWithTimeout('As senhas não coincidem!');
+      return;
+    }
+
+    // Verifica OTP de recuperação
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: forgotEmail,
+      token: passwordCode,
+      type: 'recovery',
+    });
+
+    if (error) {
+      showErrorWithTimeout('Código inválido ou expirado!');
+      return;
+    }
+
+    // Se o código for válido, o usuário ganha uma sessão temporária. Atualizamos a senha:
+    if (data.session) {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        showErrorWithTimeout('Erro ao salvar nova senha.');
+        return;
+      }
+      setShowForgotPasswordModal(false);
+      Alert.alert('Sucesso', 'Sua senha foi redefinida com sucesso! Você já está logado.');
+      // AuthContext irá detectar a sessão e navegar
+    }
+  };
+
+  const isPasswordMatch = newPassword.length > 0 && confirmNewPassword.length > 0 && newPassword === confirmNewPassword;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -125,6 +199,16 @@ export default function ClientLoginScreen() {
                 onChangeText={setPassword}
                 secureTextEntry
               />
+              <TouchableOpacity onPress={() => {
+                setForgotEmail(email); // Preenche com o email já digitado, se houver
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setPasswordCode('');
+                setPasswordError('');
+                setShowForgotPasswordModal(true);
+              }}>
+                 <Text style={{ color: '#1C2434', fontSize: 13, marginTop: 6, marginLeft: 4, fontWeight: 'bold' }}>Esqueci a senha</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -169,6 +253,92 @@ export default function ClientLoginScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* MODAL ESQUECI A SENHA */}
+      <Modal visible={showForgotPasswordModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.whiteModalContainer}>
+            <Text style={styles.whiteModalTitle}>Alterar Senha</Text>
+            <Text style={styles.whiteModalDesc}>
+              Preencha o e-mail, peça o código, e defina sua nova senha.
+            </Text>
+            
+            {!!passwordError && (
+              <Text style={styles.usernameErrorMsg}>{passwordError}</Text>
+            )}
+
+            <View style={{ gap: 10 }}>
+              {/* E-mail + Botão Mandar */}
+              <View style={[styles.whiteModalInputWrapper, passwordError.includes('e-mail') ? styles.inputError : null]}>
+                <TextInput
+                  style={styles.whiteModalInputFlex}
+                  placeholder="Seu e-mail"
+                  placeholderTextColor="#919191"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={forgotEmail}
+                  onChangeText={setForgotEmail}
+                />
+                <TouchableOpacity onPress={handleSendOtpCode} style={{ paddingHorizontal: 8, paddingVertical: 8, marginLeft: 8 }}>
+                  <Text style={{ color: '#042A7D', fontWeight: 'bold', fontSize: 14 }}>Mandar</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Nova Senha */}
+              <View style={[styles.whiteModalInputWrapper, passwordError === 'As senhas não coincidem!' ? styles.inputError : (isPasswordMatch ? { borderColor: '#4CAF50' } : null)]}>
+                <TextInput
+                  style={styles.whiteModalInputFlex}
+                  placeholder="Nova senha"
+                  placeholderTextColor="#919191"
+                  secureTextEntry={!showNewPassword}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                  <Feather name={showNewPassword ? 'eye' : 'eye-off'} size={20} color="#1C2434" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirmar Nova Senha */}
+              <View style={[styles.whiteModalInputWrapper, passwordError === 'As senhas não coincidem!' ? styles.inputError : (isPasswordMatch ? { borderColor: '#4CAF50' } : null)]}>
+                <TextInput
+                  style={styles.whiteModalInputFlex}
+                  placeholder="Confirmar nova senha"
+                  placeholderTextColor="#919191"
+                  secureTextEntry={!showConfirmNewPassword}
+                  value={confirmNewPassword}
+                  onChangeText={setConfirmNewPassword}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmNewPassword(!showConfirmNewPassword)}>
+                  <Feather name={showConfirmNewPassword ? 'eye' : 'eye-off'} size={20} color="#1C2434" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Código OTP */}
+              <View style={[styles.whiteModalInputWrapper, passwordError.includes('Código') ? styles.inputError : null]}>
+                <TextInput
+                  style={styles.whiteModalInputFlex}
+                  placeholder="Código de 8 dígitos"
+                  placeholderTextColor="#919191"
+                  keyboardType="numeric"
+                  value={passwordCode}
+                  onChangeText={setPasswordCode}
+                />
+              </View>
+            </View>
+
+            <View style={styles.whiteModalButtons}>
+              <TouchableOpacity style={styles.whiteModalBtnCancel} onPress={() => setShowForgotPasswordModal(false)}>
+                <Text style={styles.whiteModalBtnTextCancel}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.whiteModalBtnConfirm} onPress={handleConfirmFinal}>
+                <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -191,7 +361,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 44, // Ajuste para a barra de status
     paddingBottom: 12,
     backgroundColor: Colors.white,
   },
@@ -289,5 +459,87 @@ const styles = StyleSheet.create({
     height: 29,
     backgroundColor: Colors.white,
     borderRadius: 0.5,
+  },
+
+  // ===== WHITE MODAL STYLES (Copiado de SettingsScreen) =====
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+  },
+  whiteModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    alignSelf: 'center',
+  },
+  whiteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C2434',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  whiteModalDesc: {
+    fontSize: 14,
+    color: '#767676',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  whiteModalInputWrapper: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    height: 45,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  whiteModalInputFlex: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1C2434',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  usernameErrorMsg: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  whiteModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 10,
+  },
+  whiteModalBtnCancel: {
+    flex: 1,
+    backgroundColor: '#F0F0F0',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  whiteModalBtnTextCancel: {
+    color: '#FF3B30',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  whiteModalBtnConfirm: {
+    flex: 1,
+    backgroundColor: '#042A7D',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  whiteModalBtnTextConfirm: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
 });

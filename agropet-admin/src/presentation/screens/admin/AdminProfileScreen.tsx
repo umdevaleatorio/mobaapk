@@ -18,25 +18,22 @@ import { useNavigation } from '@react-navigation/native';
 import { Keyboard } from 'react-native';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { AuthContext } from '../../contexts/AuthContext';
-import { CatalogHeader } from '../../components/CatalogHeader';
 import { supabase } from '../../../data/datasources/supabase/client';
-import { useTheme } from '../../contexts/ThemeContext';
 import { Feather } from '@expo/vector-icons';
+import AdminHeader from '../../components/AdminHeader';
+import Colors from '../../theme/colors';
 
-import PhotoSvg from '../../assets/tela13/photo/Photo.svg';
-import PersonIcon13 from '../../assets/tela13/photo/Person Icon.svg';
+const useTheme = () => ({
+  colors: {
+    backgroundLight: '#F5F5F5',
+    headerBackground: '#1C2434',
+    textDark: '#1C2434',
+    cardBackground: '#E3E4EB'
+  },
+  isDarkMode: false
+});
 
-// Barra Inferior
-import HomeIcon8 from '../../assets/tela11/barra de baixo/Home.svg';
-import MapIcon8 from '../../assets/tela11/barra de baixo/Map.svg';
-import CartIcon8 from '../../assets/tela11/barra de baixo/Cart.svg';
-import GearIcon8 from '../../assets/tela11/barra de baixo/Gear.svg';
-import MenuLabel8 from '../../assets/tela11/barra de baixo/Menu.svg';
-import MapaLabel8 from '../../assets/tela11/barra de baixo/Mapa.svg';
-import CarrinhoLabel8 from '../../assets/tela11/barra de baixo/Carrinho.svg';
-import OpcoesLabel8 from '../../assets/tela11/barra de baixo/Opções.svg';
-
-export default function ProfileScreen() {
+export default function AdminProfileScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const { toggleMenu } = useUserMenu();
@@ -630,11 +627,7 @@ export default function ProfileScreen() {
       <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* ========== HEADER ========== */}
-      <CatalogHeader 
-        title="Seu perfil"
-        searchText=""
-        onSearchChange={() => {}} 
-      />
+      <AdminHeader title="perfil_adm" />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             
@@ -657,19 +650,12 @@ export default function ProfileScreen() {
                   {photoUri ? (
                     <Image source={{ uri: photoUri }} style={styles.profilePhoto} />
                   ) : (
-                    isDarkMode ? (
-                      <View style={[
-                        styles.personIconCircle,
-                        { backgroundColor: '#2E2E38' }
-                      ]}>
-                        <Feather name="user" size={36} color="#FFFFFF" />
-                      </View>
-                    ) : (
-                      <>
-                        <PhotoSvg width={110} height={110} style={{ position: 'absolute' }} />
-                        <PersonIcon13 width={70} height={70} style={{ position: 'absolute' }} />
-                      </>
-                    )
+                    <View style={[
+                      styles.personIconCircle,
+                      { backgroundColor: isDarkMode ? '#2E2E38' : '#D1D5DB' }
+                    ]}>
+                      <Feather name="user" size={36} color={isDarkMode ? '#FFFFFF' : '#6B7280'} />
+                    </View>
                   )}
                </View>
                <TouchableOpacity onPress={handleSelectPhoto}>
@@ -891,45 +877,13 @@ export default function ProfileScreen() {
                  </View>
               </View>
 
-             <Text style={styles.obsText}>
-                Obs: pedimos o seu endereço para entregarmos seu produto em sua casa caso opte por frete.{"\n"}
-                Frete válido apenas em Lambari.
+             <Text style={[styles.obsText, { fontWeight: 'bold', color: '#FFFFFF', marginTop: 10, fontSize: 14 }]}>
+                Obs: É aqui que os clientes verão a localização da sua loja!
              </Text>
           </View>
       </ScrollView>
 
-      {/* ========== BARRA INFERIOR ========== */}
-      <View style={styles.tabBarOuter}>
-        <View style={[styles.tabBarInner, { backgroundColor: colors.cardBackground }]}>
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
-            <View style={styles.iconBgInactive}>
-              <HomeIcon8 width={32} height={32} />
-            </View>
-            <MenuLabel8 width={33} height={9} />
-          </TouchableOpacity>
-          <View style={styles.tabSeparator} />
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={styles.iconBgInactive}>
-              <MapIcon8 width={32} height={32} />
-            </View>
-            <MapaLabel8 width={32} height={12} />
-          </TouchableOpacity>
-          <View style={styles.tabSeparator} />
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={styles.iconBgInactive}>
-              <CartIcon8 width={32} height={32} />
-            </View>
-            <CarrinhoLabel8 width={52} height={10} />
-          </TouchableOpacity>
-          <View style={styles.tabSeparator} />
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
-            <View style={styles.iconBgInactive}>
-              <GearIcon8 width={32} height={32} />
-            </View>
-            <OpcoesLabel8 width={42} height={12} />
-          </TouchableOpacity>
-        </View>
-      </View>
+
 
       {/* MODAL USERNAME */}
       <Modal visible={showUsernameModal} transparent={true} animationType="fade">

@@ -4,8 +4,10 @@ import { useUserMenu } from '../../contexts/UserMenuContext';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { CartContext } from '../../contexts/CartContext';
 import { AuthContext } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 import { CatalogHeader } from '../../components/CatalogHeader';
+import { Feather } from '@expo/vector-icons';
 
 // === IMPORTAÇÃO DOS SVGs (assets/tela9) ===
 // Superior
@@ -37,6 +39,7 @@ import OpcoesLabel8 from '../../assets/tela8/barra/OpcoesLabel.svg';
 
 export default function PaymentScreen({ navigation }: any) {
   const { toggleMenu } = useUserMenu();
+  const { isDarkMode } = useTheme();
   const { cart, total, clearCart, removeFromCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
 
@@ -135,8 +138,8 @@ export default function PaymentScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]}>
+      <StatusBar backgroundColor={isDarkMode ? '#121212' : '#1C2434'} barStyle="light-content" />
 
       {/* Header Unificado */}
       <CatalogHeader 
@@ -149,30 +152,30 @@ export default function PaymentScreen({ navigation }: any) {
         
         {/* ========== RESUMO DO PEDIDO ========== */}
         <View style={styles.sectionHeader}>
-          <ResumoTitle width={220} height={22} />
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434' }}>Resumo do pedido</Text>
         </View>
 
-        <View style={styles.resumoCard}>
+        <View style={[styles.resumoCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>
           {/* Header da Tabela */}
-          <View style={[styles.tRow, { borderBottomWidth: 1.5, borderColor: '#F5F5F5' }]}>
+          <View style={[styles.tRow, { borderBottomWidth: 1.5, borderColor: isDarkMode ? '#121212' : '#F5F5F5' }]}>
             <View style={styles.tColProduto}><ProdutoHdr width={62} height={15} /></View>
-            <View style={styles.tColDivider} />
+            <View style={[styles.tColDivider, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]} />
             <View style={styles.tColQty}><QuantidadeHdr width={87} height={15} /></View>
-            <View style={styles.tColDivider} />
+            <View style={[styles.tColDivider, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]} />
             <View style={styles.tColPreco}><PrecoHdr width={45} height={15} /></View>
           </View>
 
           {/* Produtos (Dinâmico) */}
           {cart.map((item, index) => (
-            <View key={index} style={[styles.tRow, { borderBottomWidth: 1.5, borderColor: '#F5F5F5' }]}>
+            <View key={index} style={[styles.tRow, { borderBottomWidth: 1.5, borderColor: isDarkMode ? '#121212' : '#F5F5F5' }]}>
               <View style={styles.tColProduto}>
                 <Text style={styles.itemText} numberOfLines={2}>{item.name}</Text>
               </View>
-              <View style={styles.tColDivider} />
+              <View style={[styles.tColDivider, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColQty}>
                 <Text style={styles.itemTextGrande}>{item.quantity}</Text>
               </View>
-              <View style={styles.tColDivider} />
+              <View style={[styles.tColDivider, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColPreco}>
                 <Text style={styles.itemText}>R$ {item.price.toFixed(2)}</Text>
               </View>
@@ -184,7 +187,7 @@ export default function PaymentScreen({ navigation }: any) {
             <View style={[styles.tColProduto, { flex: 0, width: '60%', alignItems: 'flex-start', paddingLeft: 16 }]}>
                <TotalPedido width={143} height={17} />
             </View>
-            <View style={styles.tColDivider} />
+            <View style={[styles.tColDivider, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]} />
             <View style={[styles.tColPreco, { flex: 1 }]}>
                <Text style={styles.itemTotal}>R$ {grandTotal.toFixed(2)}</Text>
             </View>
@@ -193,42 +196,44 @@ export default function PaymentScreen({ navigation }: any) {
 
         {/* ========== FORMA DE PAGAMENTO ========== */}
         <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-          <FormaPagamentoTitle width={247} height={22} />
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434' }}>Forma de pagamento</Text>
         </View>
 
-        <View style={styles.paymentCard}>
+        <View style={[styles.paymentCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
           <TouchableOpacity 
-            style={styles.dropdownBox} 
+            style={[styles.dropdownBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]} 
             activeOpacity={0.8}
             onPress={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             {paymentMethod === 'PIX' ? (
-               <PixTxt width={36} height={15} />
+               <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434' }}>PIX</Text>
             ) : (
-               <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{paymentMethod}</Text>
+               <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434' }}>{paymentMethod}</Text>
             )}
-            <UpsideDown width={24} height={12} style={{ transform: [{ rotate: isDropdownOpen ? '180deg' : '0deg' }] }} />
+            <Feather name="chevron-down" size={24} color={isDarkMode ? '#FFFFFF' : '#1C2434'} style={{ transform: [{ rotate: isDropdownOpen ? '180deg' : '0deg' }] }} />
           </TouchableOpacity>
 
           {isDropdownOpen && (
-            <View style={styles.dropdownList}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setPaymentMethod('PIX'); setIsDropdownOpen(false); }}>
-                <PixTxt width={36} height={15} />
+            <View style={[styles.dropdownList, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+              <TouchableOpacity style={[styles.dropdownItem, { borderColor: isDarkMode ? '#3E3E4A' : '#F0F0F0' }]} onPress={() => { setPaymentMethod('PIX'); setIsDropdownOpen(false); }}>
+                <Text style={[styles.dropdownText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>PIX</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setPaymentMethod('Cartão/Débito'); setIsDropdownOpen(false); }}>
-                <Text style={styles.dropdownText}>Cartão/Débito</Text>
+              <TouchableOpacity style={[styles.dropdownItem, { borderColor: isDarkMode ? '#3E3E4A' : '#F0F0F0' }]} onPress={() => { setPaymentMethod('Cartão/Débito'); setIsDropdownOpen(false); }}>
+                <Text style={[styles.dropdownText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Cartão/Débito</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setPaymentMethod('Cartão/Crédito'); setIsDropdownOpen(false); }}>
-                <Text style={styles.dropdownText}>Cartão/Crédito</Text>
+              <TouchableOpacity style={[styles.dropdownItem, { borderColor: isDarkMode ? '#3E3E4A' : '#F0F0F0' }]} onPress={() => { setPaymentMethod('Cartão/Crédito'); setIsDropdownOpen(false); }}>
+                <Text style={[styles.dropdownText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Cartão/Crédito</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setPaymentMethod('Dinheiro'); setIsDropdownOpen(false); }}>
-                <Text style={styles.dropdownText}>Dinheiro</Text>
+              <TouchableOpacity style={[styles.dropdownItem, { borderColor: isDarkMode ? '#3E3E4A' : '#F0F0F0' }]} onPress={() => { setPaymentMethod('Dinheiro'); setIsDropdownOpen(false); }}>
+                <Text style={[styles.dropdownText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Dinheiro</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.instructionBox}>
-            <InstructionTxt width={260} height={45} />
+            <Text style={{ color: isDarkMode ? '#FFFFFF' : '#1C2434', fontSize: 13, fontWeight: 'bold', textAlign: 'center' }}>
+              Escolha a forma de pagamento e clique em fazer pedido em seguida!
+            </Text>
           </View>
 
           {loading ? (
@@ -244,39 +249,39 @@ export default function PaymentScreen({ navigation }: any) {
 
       {/* ========== BARRA INFERIOR (Matches ClientTabs) ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={styles.tabBarInner}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
-            <View style={styles.iconBg}>
-              <HomeIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <HomeIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MenuLabel8 width={33} height={9} />
+            <MenuLabel8 width={33} height={9} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={styles.iconBg}>
-              <MapIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <MapIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MapaLabel8 width={32} height={12} />
+            <MapaLabel8 width={32} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={[styles.iconBg, styles.iconBgActive]}>
-              <CartIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268' }]}>
+              <CartIcon8 width={32} height={32} fill={isDarkMode ? '#FFD700' : undefined} stroke={isDarkMode ? '#FFD700' : undefined} />
             </View>
-            <CarrinhoLabel8 width={52} height={10} />
+            <CarrinhoLabel8 width={52} height={10} fill={isDarkMode ? '#FFD700' : undefined} stroke={isDarkMode ? '#FFD700' : undefined} />
           </TouchableOpacity>
 
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
-            <View style={styles.iconBg}>
-              <GearIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <GearIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <OpcoesLabel8 width={42} height={12} />
+            <OpcoesLabel8 width={42} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
         </View>
       </View>
@@ -348,7 +353,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C2434',
     borderRadius: 20,
     overflow: 'hidden',
-    paddingVertical: 10,
   },
   tRow: {
     flexDirection: 'row',

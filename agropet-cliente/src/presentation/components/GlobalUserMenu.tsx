@@ -1,27 +1,103 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, TouchableHighlight } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useUserMenu } from '../contexts/UserMenuContext';
 import { AuthContext } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const GlobalUserMenu = () => {
   const { isMenuVisible, closeMenu } = useUserMenu();
   const { signOut } = React.useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
 
-  if (!isMenuVisible) return null;
+  // Estado local para permitir que a animação de fechamento termine antes de ocultar o Modal
+  const [shouldRender, setShouldRender] = useState(isMenuVisible);
+
+  // Valores de animação para o pop-in/pop-out
+  const animScale = useRef(new Animated.Value(0.85)).current;
+  const animOpacity = useRef(new Animated.Value(0)).current;
+
+  // Valores de escala para feedback tátil individual dos botões
+  const profileScale = useRef(new Animated.Value(1)).current;
+  const ordersScale = useRef(new Animated.Value(1)).current;
+  const logoutScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isMenuVisible) {
+      setShouldRender(true);
+      Animated.parallel([
+        Animated.spring(animScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 9,
+        }),
+        Animated.timing(animOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(animScale, {
+          toValue: 0.85,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShouldRender(false);
+      });
+    }
+  }, [isMenuVisible]);
+
+  if (!shouldRender) return null;
 
   const handleNavigate = async (screenName: string, params?: any) => {
-    closeMenu();
-    if (screenName === 'Logout') {
-      try {
-        await signOut();
-      } catch (e) {
-        console.error("Erro ao sair:", e);
+    // Primeiro executa uma rápida animação de fade-out e scale-down para o fechamento ficar suave
+    Animated.parallel([
+      Animated.timing(animScale, {
+        toValue: 0.85,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animOpacity, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      closeMenu();
+      if (screenName === 'Logout') {
+        signOut().catch((e) => console.error("Erro ao sair:", e));
+        return;
       }
-      return;
-    }
-    navigation.navigate(screenName, params);
+      navigation.navigate(screenName, params);
+    });
+  };
+
+  const animatePress = (scaleVar: Animated.Value, action: () => void) => {
+    Animated.sequence([
+      Animated.timing(scaleVar, {
+        toValue: 0.92,
+        duration: 70,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleVar, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 4,
+        tension: 120,
+      }),
+    ]).start(() => {
+      action();
+    });
   };
 
   return (
@@ -29,39 +105,54 @@ export const GlobalUserMenu = () => {
       transparent
       visible={isMenuVisible}
       onRequestClose={closeMenu}
-      animationType="fade"
+      animationType="none"
     >
       <TouchableWithoutFeedback onPress={closeMenu}>
         <View style={styles.overlay}>
-          <View style={styles.menuContainer}>
-            <TouchableHighlight 
-              style={styles.menuItem} 
-              underlayColor="#767676"
-              onPress={() => handleNavigate('ProfileScreen')}
+          <Animated.View 
+            style={[
+              styles.menuContainer, 
+              { 
+                opacity: animOpacity,
+                transform: [
+                  { scale: animScale }
+                ],
+                backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF',
+                borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB',
+              }
+            ]}
+          >
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => animatePress(profileScale, () => handleNavigate('ProfileScreen'))}
             >
-              <Text style={styles.menuText}>Ver perfil</Text>
-            </TouchableHighlight>
+              <Animated.View style={[styles.menuItem, { transform: [{ scale: profileScale }] }]}>
+                <Text style={[styles.menuText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Ver perfil</Text>
+              </Animated.View>
+            </TouchableOpacity>
             
-            <View style={styles.menuSeparator} />
+            <View style={[styles.menuSeparator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} />
 
-            <TouchableHighlight 
-              style={styles.menuItem} 
-              underlayColor="#767676"
-              onPress={() => handleNavigate('OrdersScreen')}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => animatePress(ordersScale, () => handleNavigate('OrdersScreen'))}
             >
-              <Text style={styles.menuText}>Ver pedidos</Text>
-            </TouchableHighlight>
+              <Animated.View style={[styles.menuItem, { transform: [{ scale: ordersScale }] }]}>
+                <Text style={[styles.menuText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Ver pedidos</Text>
+              </Animated.View>
+            </TouchableOpacity>
 
-            <View style={styles.menuSeparator} />
+            <View style={[styles.menuSeparator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} />
 
-            <TouchableHighlight 
-              style={styles.menuItem} 
-              underlayColor="#767676"
-              onPress={() => handleNavigate('Logout')}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => animatePress(logoutScale, () => handleNavigate('Logout'))}
             >
-              <Text style={[styles.menuText, styles.textRed]}>Sair</Text>
-            </TouchableHighlight>
-          </View>
+              <Animated.View style={[styles.menuItem, { transform: [{ scale: logoutScale }] }]}>
+                <Text style={[styles.menuText, { color: isDarkMode ? '#D51F1F' : '#C41919' }]}>Sair</Text>
+              </Animated.View>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
@@ -77,11 +168,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 42, // Alinhado bem rente sob o ícone de pessoa
     right: 15, // Alinhado sob o ícone de pessoa
-    backgroundColor: '#E3E4EB',
+    backgroundColor: '#1E1E24',
     borderRadius: 8,
     width: 140,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: '#3E3E4A',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -96,12 +187,12 @@ const styles = StyleSheet.create({
   },
   menuSeparator: {
     height: 1,
-    backgroundColor: '#CCC',
+    backgroundColor: '#3E3E4A',
     marginHorizontal: 5,
   },
   menuText: {
     fontSize: 14,
-    color: '#1C2434',
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   textRed: {

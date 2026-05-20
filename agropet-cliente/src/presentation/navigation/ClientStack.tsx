@@ -7,6 +7,7 @@ import ProductDetailScreen from '../screens/client/ProductDetailScreen';
 import PaymentScreen from '../screens/client/PaymentScreen';
 import PaymentConfirmScreen from '../screens/client/PaymentConfirmScreen';
 import OrdersScreen from '../screens/client/OrdersScreen';
+import OrderDetailScreen from '../screens/client/OrderDetailScreen';
 import TrackingScreen from '../screens/client/TrackingScreen';
 import ProfileScreen from '../screens/client/ProfileScreen';
 
@@ -25,6 +26,8 @@ export default function ClientStack() {
         <Stack.Screen name="PaymentConfirmScreen" component={PaymentConfirmScreen} options={{ headerShown: false }} />
         {/* Tela de Histórico/Situação de Pedidos (Tela 11) */}
         <Stack.Screen name="OrdersScreen" component={OrdersScreen} options={{ headerShown: false }} />
+        {/* Tela de Detalhes do Pedido */}
+        <Stack.Screen name="OrderDetailScreen" component={OrderDetailScreen} options={{ headerShown: false }} />
         {/* Tela de Acompanhamento (Tela 12) */}
         <Stack.Screen name="TrackingScreen" component={TrackingScreen} options={{ headerShown: false }} />
         {/* Nova Tela de Perfil (Tela 13) */}

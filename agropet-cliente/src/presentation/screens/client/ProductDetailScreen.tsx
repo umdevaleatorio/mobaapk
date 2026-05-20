@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,13 +8,18 @@ import {
   TouchableOpacity,
   Text,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { CartContext } from '../../contexts/CartContext';
 import { useUserMenu } from '../../contexts/UserMenuContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { CatalogHeader, CatalogFilter } from '../../components/CatalogHeader';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { supabase } from '../../../data/datasources/supabase/client';
+import { useFilter, CATEGORY_KEYWORDS } from '../../contexts/FilterContext';
 
-// SVGs do carrinho
+// SVGs do carrinho restaurados
 import CartBig from '../../assets/tela5/carrinho/CartBig.svg';
 import PlusIcon from '../../assets/tela5/carrinho/PlusIcon.svg';
 
@@ -28,20 +33,115 @@ import MapaLabel from '../../assets/tela5/barra/MapaLabel.svg';
 import CarrinhoLabel from '../../assets/tela5/barra/CarrinhoLabel.svg';
 import OpcoesLabel from '../../assets/tela5/barra/OpcoesLabel.svg';
 
-// SVGs produtos relacionados
-import RelCartIcon from '../../assets/tela5/relacionados/CartIcon1.svg';
+// SVGs produtos relacionados substituídos por Feather
+// import RelCartIcon from '../../assets/tela5/relacionados/CartIcon1.svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ProductDetailScreen() {
+  const { colors, isDarkMode } = useTheme();
   const { toggleMenu } = useUserMenu();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { addToCart } = useContext(CartContext);
+  const { searchText, setSearchText } = useFilter();
 
   const product = route.params?.product;
-  const [quantity, setQuantity] = useState(2);
-  const [searchText, setSearchText] = useState('');
+  const [stock, setStock] = useState(product?.stock ?? 0);
+  const [quantity, setQuantity] = useState(1);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(true);
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    const fetchStock = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', product.id)
+          .single();
+
+        if (data && !error) {
+          setStock(data.stock);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar estoque:', err);
+      }
+    };
+
+    fetchStock();
+
+    // Inscrição em tempo real para mudanças no estoque do produto
+    const channel = supabase
+      .channel(`product_stock_${product.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'products',
+          filter: `id=eq.${product.id}`,
+        },
+        (payload: any) => {
+          if (payload.new && typeof payload.new.stock === 'number') {
+            setStock(payload.new.stock);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [product?.id]);
+
+  const fetchRelatedProducts = async () => {
+    try {
+      setLoadingRelated(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('active', true)
+        .neq('id', product.id);
+
+      if (!error && data) {
+        const currentNameLower = product.name.toLowerCase();
+        let matchedKeywords: string[] = [];
+
+        for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+          if (keywords.some(kw => currentNameLower.includes(kw))) {
+            matchedKeywords = keywords;
+            break;
+          }
+        }
+
+        let filtered = data.filter(p => {
+          const nameLower = p.name.toLowerCase();
+          return matchedKeywords.some(kw => nameLower.includes(kw));
+        });
+
+        if (filtered.length === 0) {
+          const words = currentNameLower.split(' ').filter((w: string) => w.length > 3);
+          filtered = data.filter(p => {
+            const nameLower = p.name.toLowerCase();
+            return words.some((w: string) => nameLower.includes(w));
+          });
+        }
+
+        setRelatedProducts(filtered);
+      }
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoadingRelated(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRelatedProducts();
+  }, [product]);
 
   if (!product) return null;
 
@@ -49,18 +149,16 @@ export default function ProductDetailScreen() {
   const decrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      addToCart(product);
-    }
+    addToCart(product, quantity);
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header + Filtro (compartilhado) */}
       <CatalogHeader searchText={searchText} onSearchChange={setSearchText} />
-      <CatalogFilter activeCategory="Ração" />
+      <CatalogFilter />
 
       <ScrollView
         style={styles.contentScroll}
@@ -68,11 +166,11 @@ export default function ProductDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ========== CARD DO PRODUTO (#E3E4EB, 326x406, rx=25) ========== */}
-        <View style={styles.productCard}>
+        <View style={[styles.productCard, { backgroundColor: colors.cardBackground }]}>
           {/* Parte de cima: Foto à esquerda (159x215) + Info à direita */}
           <View style={styles.topRow}>
             {/* Foto do produto */}
-            <View style={styles.photoWrapper}>
+            <View style={[styles.photoWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
               {product.image_url ? (
                 <Image
                   source={{ uri: product.image_url }}
@@ -80,32 +178,44 @@ export default function ProductDetailScreen() {
                   resizeMode="contain"
                 />
               ) : (
-                <View style={[styles.photo, { backgroundColor: '#d9d9d9', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ color: '#999' }}>Sem Foto</Text>
+                <View style={[styles.photo, { backgroundColor: isDarkMode ? '#3A3A44' : '#d9d9d9', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Text style={{ color: isDarkMode ? '#888' : '#999' }}>Sem Foto</Text>
                 </View>
               )}
             </View>
 
             {/* Info à direita: Nome + "Informações na Embalagem" */}
             <View style={styles.infoColumn}>
-              <Text style={styles.productTitle}>{product.name}</Text>
-              {product.description ? (
-                <Text style={styles.productSubtitle}>{product.description}</Text>
-              ) : (
-                <Text style={styles.infoEmbalagem}>
-                  Informações{'\n'}na{'\n'}Embalagem
-                </Text>
-              )}
+              <View style={{ flex: 1, justifyContent: 'flex-start' }}>
+                <Text style={[styles.productTitle, { color: colors.textDark }]}>{product.name}</Text>
+                {product.description ? (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 13, color: colors.textDark, marginBottom: 2 }}>
+                      Descrição do produto:
+                    </Text>
+                    <Text style={[styles.productSubtitle, { color: colors.textDark }]}>{product.description}</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.infoEmbalagem, { color: colors.textDark }]}>
+                    Informações{'\n'}na{'\n'}Embalagem
+                  </Text>
+                )}
+              </View>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#919191' : '#042A7D',
+                marginTop: 8,
+                textAlign: 'left',
+                paddingLeft: 4
+              }}>
+                Estoque: {stock} unidades
+              </Text>
             </View>
           </View>
 
-          {/* Descrição do produto */}
-          <Text style={styles.descricaoText}>
-            Descrição do produto: {product.description || product.name}
-          </Text>
-
           {/* Preço */}
-          <Text style={styles.precoText}>
+          <Text style={[styles.precoText, { color: colors.textDark }]}>
             R$ {product.price?.toFixed(2)} Un.
           </Text>
 
@@ -158,95 +268,98 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* ========== PRODUTOS RELACIONADOS ========== */}
-        <Text style={styles.relatedTitle}>Produtos Relacionados:</Text>
+        <Text style={[styles.relatedTitle, { color: colors.textDark }]}>Produtos Relacionados:</Text>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.relatedScroll}
-        >
-          {/* Card Produto Relacionado 1 */}
-          <View style={styles.relatedCard}>
-            {/* Foto (150x150, rx=20, #E3E4EB fundo) */}
-            <View style={styles.relatedPhotoBox}>
-              <View style={styles.relatedPhotoPlaceholder}>
-                <Text style={{ fontSize: 40 }}>📦</Text>
-              </View>
-            </View>
+        {loadingRelated ? (
+          <ActivityIndicator size="small" color={colors.primaryDark} style={{ marginVertical: 20 }} />
+        ) : relatedProducts.length === 0 ? (
+          <Text style={[styles.noRelatedText, { color: colors.textDark }]}>
+            No momento, não há nenhum produto relacionado à {product.name}
+          </Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.relatedScroll}
+          >
+            {relatedProducts.map((relProduct) => (
+              <TouchableOpacity
+                key={relProduct.id}
+                onPress={() => navigation.replace('ProductDetail', { product: relProduct })}
+                activeOpacity={0.7}
+                style={[styles.relatedCard, { backgroundColor: colors.cardBackground }]}
+              >
+                {/* Foto */}
+                <View style={[styles.relatedPhotoBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+                  {relProduct.image_url ? (
+                    <Image source={{ uri: relProduct.image_url }} style={styles.relatedPhoto} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.relatedPhotoPlaceholder}>
+                      <Text style={{ fontSize: 40 }}>📦</Text>
+                    </View>
+                  )}
+                </View>
 
-            {/* Info: cart icon + nome + preço */}
-            <View style={styles.relatedInfoRow}>
-              <View style={styles.relatedCartCircle}>
-                <RelCartIcon width={24} height={24} />
-              </View>
-              <View style={styles.relatedTexts}>
-                <Text style={styles.relatedName} numberOfLines={1}>Ração Besser 15Kg</Text>
-                <Text style={styles.relatedPrice}>45,99 Un.</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Card Produto Relacionado 2 */}
-          <View style={styles.relatedCard}>
-            <View style={styles.relatedPhotoBox}>
-              <View style={styles.relatedPhotoPlaceholder}>
-                <Text style={{ fontSize: 40 }}>📦</Text>
-              </View>
-            </View>
-
-            <View style={styles.relatedInfoRow}>
-              <View style={styles.relatedCartCircle}>
-                <RelCartIcon width={24} height={24} />
-              </View>
-              <View style={styles.relatedTexts}>
-                <Text style={styles.relatedName} numberOfLines={1}>Ração Pedigree 15Kg</Text>
-                <Text style={styles.relatedPrice}>54,50 Un.</Text>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+                {/* Info: cart icon + nome + preço */}
+                <View style={styles.relatedInfoRow}>
+                  <TouchableOpacity 
+                    style={[styles.relatedCartCircle, { backgroundColor: isDarkMode ? '#FFFFFF' : '#E3DAD9' }]}
+                    onPress={() => addToCart(relProduct)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons name="shopping-cart" size={16} color={isDarkMode ? '#5B86E5' : '#042A7D'} />
+                  </TouchableOpacity>
+                  <View style={styles.relatedTexts}>
+                    <Text style={[styles.relatedName, { color: colors.textDark }]} numberOfLines={1}>{relProduct.name}</Text>
+                    <Text style={[styles.relatedPrice, { color: colors.textDark }]}>R$ {relProduct.price?.toFixed(2)}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
       </ScrollView>
 
       {/* ========== BARRA DE BAIXO (igual Tela 4) ========== */}
       <View style={styles.bottomBarOuter}>
-        <View style={styles.bottomBarInner}>
+        <View style={[styles.bottomBarInner, { backgroundColor: isDarkMode ? '#000000' : colors.cardBackground }]}>
           {/* Menu */}
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs')}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
             <View style={styles.iconBg}>
-              <HomeIcon width={32} height={32} />
+              <HomeIcon width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MenuLabel width={33} height={9} />
+            <MenuLabel width={33} height={9} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
 
-          <View style={styles.tabSep} />
+          <View style={[styles.tabSep, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.4)' : '#8A7268' }]} />
 
           {/* Mapa */}
-          <TouchableOpacity style={styles.tabItem}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
             <View style={styles.iconBg}>
-              <MapIcon width={32} height={32} />
+              <MapIcon width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MapaLabel width={32} height={12} />
+            <MapaLabel width={32} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
 
-          <View style={styles.tabSep} />
+          <View style={[styles.tabSep, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.4)' : '#8A7268' }]} />
 
           {/* Carrinho */}
-          <TouchableOpacity style={styles.tabItem}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
             <View style={styles.iconBg}>
-              <BarCartIcon width={32} height={32} />
+              <BarCartIcon width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <CarrinhoLabel width={52} height={10} />
+            <CarrinhoLabel width={52} height={10} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
 
-          <View style={styles.tabSep} />
+          <View style={[styles.tabSep, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.4)' : '#8A7268' }]} />
 
           {/* Opções */}
-          <TouchableOpacity style={styles.tabItem}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
             <View style={styles.iconBg}>
-              <GearIcon width={32} height={32} />
+              <GearIcon width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <OpcoesLabel width={42} height={12} />
+            <OpcoesLabel width={42} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
         </View>
       </View>
@@ -560,5 +673,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#E3DAD9',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  relatedPhoto: {
+    width: 154,
+    height: 110,
+    borderRadius: 15,
+  },
+  noRelatedText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 16,
   },
 });

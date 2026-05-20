@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, StatusBar, Platform } from 'react-native';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { CatalogHeader } from '../../components/CatalogHeader';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // === IMPORTAÇÃO DOS SVGs (assets/tela10) ===
 // Superior
@@ -24,13 +25,14 @@ import OpcoesLabel8 from '../../assets/tela8/barra/OpcoesLabel.svg';
 
 export default function PaymentConfirmScreen({ route, navigation }: any) {
   const { toggleMenu } = useUserMenu();
+  const { isDarkMode } = useTheme();
   const { orderId } = route.params || {};
 
   const [searchText, setSearchText] = useState('');
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]}>
+      <StatusBar backgroundColor={isDarkMode ? '#121212' : '#1C2434'} barStyle="light-content" />
 
       {/* Header Unificado */}
       <CatalogHeader 
@@ -42,10 +44,18 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
       {/* ========== CONTEÚDO (MEIO) ========== */}
       <View style={styles.contentContainer}>
         <CheckInIcon width={181} height={181} style={styles.checkIcon} />
-        <PedidoConfirmadoTxt width={194} height={80} style={styles.successTitle} />
+        {isDarkMode ? (
+          <View style={[styles.successTitle, { width: 194, height: 80, justifyContent: 'center', alignItems: 'center' }]}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>
+              Pedido confirmado!
+            </Text>
+          </View>
+        ) : (
+          <PedidoConfirmadoTxt width={194} height={80} style={styles.successTitle} />
+        )}
         
         <TouchableOpacity
-          style={styles.btnAcompanhar}
+          style={[styles.btnAcompanhar, { backgroundColor: isDarkMode ? '#1E1E24' : '#1C2434', borderWidth: isDarkMode ? 1 : 0, borderColor: isDarkMode ? '#3E3E4A' : 'transparent' }]}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('OrdersScreen')}
         >
@@ -55,40 +65,39 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
 
       {/* ========== BARRA INFERIOR (Matches ClientTabs) ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={styles.tabBarInner}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
-            <View style={styles.iconBg}>
-              <HomeIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <HomeIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MenuLabel8 width={33} height={9} />
+            <MenuLabel8 width={33} height={9} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={styles.iconBg}>
-              <MapIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <MapIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <MapaLabel8 width={32} height={12} />
+            <MapaLabel8 width={32} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
-          {/* Carrinho continua como a aba "ativa" (mesmo efeito da T9 e T8) */}
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={[styles.iconBg, styles.iconBgActive]}>
-              <CartIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268' }]}>
+              <CartIcon8 width={32} height={32} fill={isDarkMode ? '#FFD700' : undefined} stroke={isDarkMode ? '#FFD700' : undefined} />
             </View>
-            <CarrinhoLabel8 width={52} height={10} />
+            <CarrinhoLabel8 width={52} height={10} fill={isDarkMode ? '#FFD700' : undefined} stroke={isDarkMode ? '#FFD700' : undefined} />
           </TouchableOpacity>
 
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
-            <View style={styles.iconBg}>
-              <GearIcon8 width={32} height={32} />
+            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+              <GearIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             </View>
-            <OpcoesLabel8 width={42} height={12} />
+            <OpcoesLabel8 width={42} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
           </TouchableOpacity>
         </View>
       </View>
