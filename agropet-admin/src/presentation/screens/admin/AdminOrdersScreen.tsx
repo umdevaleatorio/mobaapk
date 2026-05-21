@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -16,6 +16,7 @@ import VerProdutosSvg from '../../assets/tela5/em entrega/pedido 1/Ver produtos.
 import PixSvg from '../../assets/tela5/em entrega/pedido 1/PIX.svg';
 import PgtoAprovadoSvg from '../../assets/tela5/em entrega/pedido 1/Pagamento aprovado.svg';
 import DinheiroSvg from '../../assets/tela5/em entrega/pedido 4/Dinheiro.svg';
+import RastrearSvg from '../../assets/tela5/Rastrear.svg';
 
 import Separador1 from '../../assets/tela5/em entrega/pedido 1/Separador 1.svg';
 import Separador2 from '../../assets/tela5/em entrega/pedido 1/Separador 2.svg';
@@ -35,18 +36,33 @@ export default function AdminOrdersScreen() {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
     fetchOrders();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchOrders();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Timer local para atualizar o tempo atual a cada 10 segundos, forçando a limpeza automática de pedidos expirados
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 10000);
+    return () => clearInterval(timer);
   }, []);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Fetch all orders for admin
+      // Fetch all orders for admin (excluding completed orders)
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('*, order_items( product_id, products( name, image_url ) )')
+        .select('*, users(id, name, phone, lat, lng, rua, numero, bairro, cep), order_items( quantity, unit_price, product_id, products( name, image_url ) )')
+        .neq('status', 'completed')
         .order('created_at', { ascending: false });
         
       if (ordersError) throw ordersError;
@@ -58,6 +74,26 @@ export default function AdminOrdersScreen() {
     }
   };
 
+  const handleTrackOrder = (order: any) => {
+    if (!order.users?.lat || !order.users?.lng) {
+      Alert.alert('Aviso', 'Este cliente não possui localização geográfica cadastrada no perfil.');
+      return;
+    }
+
+    navigation.navigate('AdminTabs', {
+      screen: 'Mapa',
+      params: {
+        clientLocation: {
+          latitude: order.users.lat,
+          longitude: order.users.lng,
+          name: order.users.name || 'Cliente',
+          address: `${order.users.rua || ''}, ${order.users.numero || ''} - ${order.users.bairro || ''}`,
+          orderId: order.id,
+        }
+      }
+    });
+  };
+
   const getPaymentDisplay = (paymentMethod: string) => {
     switch(paymentMethod) {
       case 'pix': return <PixSvg width={25} height={12} />;
@@ -66,6 +102,84 @@ export default function AdminOrdersScreen() {
       case 'dinheiro': return <DinheiroSvg width={50} height={15} />;
       default: return <Text style={styles.pgtoText}>{paymentMethod}</Text>;
     }
+  };
+
+  const activeOrders = orders.filter(order => order.status !== 'cancelled');
+  const cancelledOrders = orders.filter(order => {
+    if (order.status !== 'cancelled') return false;
+    const cancellationTime = new Date(order.updated_at || order.created_at).getTime();
+    const elapsed = currentTime - cancellationTime;
+    return elapsed < 5 * 60 * 1000; // 5 minutos em milissegundos
+  });
+
+  const renderOrderCard = (order: any, isCancelled: boolean) => {
+    return (
+      <View key={order.id} style={[styles.orderCard, isCancelled && { opacity: 0.6 }]}>
+        
+        {/* Coluna 1: Nº do Pedido */}
+        <View style={styles.colContainer}>
+          <NumPedidoSvg width={72} height={12} style={{ marginBottom: 12 }} />
+          <Text style={styles.valText}>{order.id.slice(0, 8).toUpperCase()}</Text>
+        </View>
+
+        {/* Separador 1 */}
+        <Separador1 height={100} style={{ alignSelf: 'center' }} />
+
+        {/* Coluna 2: Forma de pagamento */}
+        <View style={styles.colContainer}>
+          <FormaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
+          {getPaymentDisplay(order.payment_method)}
+        </View>
+
+        {/* Separador 2 */}
+        <Separador2 height={100} style={{ alignSelf: 'center' }} />
+
+        {/* Coluna 3: Situação do pagamento */}
+        <View style={styles.colContainer}>
+          <SituaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
+          {order.status === 'cancelled' ? (
+            <Text style={[styles.valText, { color: '#757575' }]}>Cancelado</Text>
+          ) : order.status === 'confirmed' || order.status === 'completed' ? (
+            <PgtoAprovadoSvg width={65} height={22} />
+          ) : (
+            <Text style={[styles.valText, { color: '#e69900' }]}>Pendente</Text>
+          )}
+        </View>
+
+        {/* Separador 3 */}
+        <Separador3 height={100} style={{ alignSelf: 'center' }} />
+
+        {/* Coluna 4: Rastrear e Ver Produtos */}
+        <View style={[styles.colContainer, { gap: 6 }]}>
+          {isCancelled ? (
+            <TouchableOpacity 
+              disabled={true} 
+              activeOpacity={1}
+              style={[styles.verProdutosBtn, { opacity: 0.3 }]}
+            >
+              <RastrearSvg width={57} height={14} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={styles.verProdutosBtn}
+              onPress={() => handleTrackOrder(order)}
+            >
+              <RastrearSvg width={57} height={14} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity 
+            activeOpacity={0.7} 
+            style={styles.verProdutosBtn}
+            onPress={() => navigation.navigate('AdminOrderDetailScreen', { order })}
+          >
+            <VerProdutosSvg width={61} height={34} />
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    );
   };
 
   return (
@@ -83,54 +197,24 @@ export default function AdminOrdersScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#339914" style={{ marginTop: 20 }} />
-        ) : orders.length === 0 ? (
-          <Text style={styles.emptyText}>Não há pedidos registrados.</Text>
+        ) : activeOrders.length === 0 ? (
+          <Text style={styles.emptyText}>Não há pedidos ativos registrados.</Text>
         ) : (
-          orders.map((order, index) => {
-            return (
-              <View key={order.id} style={styles.orderCard}>
-                
-                {/* Coluna 1: Nº do Pedido */}
-                <View style={styles.colContainer}>
-                  <NumPedidoSvg width={72} height={12} style={{ marginBottom: 12 }} />
-                  <Text style={styles.valText}>{order.id.slice(0, 8).toUpperCase()}</Text>
-                </View>
+          activeOrders.map(order => renderOrderCard(order, false))
+        )}
 
-                {/* Separador 1 */}
-                <Separador1 height={100} style={{ alignSelf: 'center' }} />
-
-                {/* Coluna 2: Forma de pagamento */}
-                <View style={styles.colContainer}>
-                  <FormaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
-                  {getPaymentDisplay(order.payment_method)}
-                </View>
-
-                {/* Separador 2 */}
-                <Separador2 height={100} style={{ alignSelf: 'center' }} />
-
-                {/* Coluna 3: Situação do pagamento */}
-                <View style={styles.colContainer}>
-                  <SituaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
-                  {order.status === 'confirmed' || order.status === 'completed' ? (
-                    <PgtoAprovadoSvg width={65} height={22} />
-                  ) : (
-                    <Text style={[styles.valText, { color: '#e69900' }]}>Pendente</Text>
-                  )}
-                </View>
-
-                {/* Separador 3 */}
-                <Separador3 height={100} style={{ alignSelf: 'center' }} />
-
-                {/* Coluna 4: Ver Produtos */}
-                <View style={styles.colContainer}>
-                  <TouchableOpacity activeOpacity={0.7} style={styles.verProdutosBtn}>
-                    <VerProdutosSvg width={61} height={34} />
-                  </TouchableOpacity>
-                </View>
-
-              </View>
-            )
-          })
+        {/* Sub-sessão de Pedidos Cancelados */}
+        {!loading && (
+          <View style={{ marginTop: 25 }}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.cancelledSectionTitle}>Pedidos cancelados</Text>
+            </View>
+            {cancelledOrders.length === 0 ? (
+              <Text style={styles.emptyText}>Não há pedidos cancelados, Uhuu 🥳</Text>
+            ) : (
+              cancelledOrders.map(order => renderOrderCard(order, true))
+            )}
+          </View>
         )}
       </ScrollView>
 
@@ -203,6 +287,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
     textAlign: 'center'
+  },
+  cancelledSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1C2434',
+    marginLeft: 4,
+    marginBottom: 8,
   },
 
   // ========== CARD ==========

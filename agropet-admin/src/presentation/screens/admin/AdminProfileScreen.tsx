@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   Alert,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
@@ -22,6 +23,8 @@ import { supabase } from '../../../data/datasources/supabase/client';
 import { Feather } from '@expo/vector-icons';
 import AdminHeader from '../../components/AdminHeader';
 import Colors from '../../theme/colors';
+import PhotoSvg from '../../assets/tela13/photo/Photo.svg';
+import PersonIcon13 from '../../assets/tela13/photo/Person Icon.svg';
 
 const useTheme = () => ({
   colors: {
@@ -81,12 +84,39 @@ export default function AdminProfileScreen() {
     return null;
   })();
 
-  // Validação dinâmica ao digitar: ativa o aviso apenas se o usuário digitar algo e deixar campos em branco
-  React.useEffect(() => {
-    const hasAny = rua.trim() || bairro.trim() || cep.trim() || numero.trim();
-    if (hasAny) {
-      setShowAddressValidationErrors(true);
+  // Animação de fade para erros de endereço
+  const addressErrorOpacity = useRef(new Animated.Value(0)).current;
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAddressError = useCallback(() => {
+    // Limpa timeout anterior se houver
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
     }
+    setShowAddressValidationErrors(true);
+    // Fade in
+    Animated.timing(addressErrorOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    // Timeout de 8 segundos para sumir
+    errorTimeoutRef.current = setTimeout(() => {
+      Animated.timing(addressErrorOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setShowAddressValidationErrors(false);
+        }
+      });
+    }, 8000);
+  }, [addressErrorOpacity]);
+
+  // Reset do locationConfirmed quando o endereço muda
+  React.useEffect(() => {
     if (profileLoadedRef.current) {
       setLocationConfirmed(false);
     }
@@ -168,12 +198,8 @@ export default function AdminProfileScreen() {
           }
           setLocationConfirmed(data.location_confirmed || false);
 
-          // Se o endereço estiver incompleto no DB, ativa as bordas vermelhas nos campos vazios
-          const hasAny = data.rua || data.bairro || data.cep || data.numero;
-          const hasEmpty = !data.rua || !data.bairro || !data.cep || !data.numero;
-          if (hasAny && hasEmpty) {
-            setShowAddressValidationErrors(true);
-          }
+          // Endereço incompleto no DB: não mostra erro automaticamente
+          // O erro só será mostrado ao tentar confirmar/enviar
 
           setTimeout(() => {
             profileLoadedRef.current = true;
@@ -305,7 +331,7 @@ export default function AdminProfileScreen() {
 
   const handleSendAddress = async () => {
     if (!rua.trim() || !bairro.trim() || !cep.trim() || !numero.trim()) {
-      setShowAddressValidationErrors(true);
+      triggerAddressError();
       return;
     }
 
@@ -405,16 +431,27 @@ export default function AdminProfileScreen() {
     if (error) {
       Alert.alert('Erro', 'Não foi possível salvar o endereço.');
     } else {
+      // Upsert agropet_store_location table to update store pin automatically
+      if (resolvedLat && resolvedLng) {
+        try {
+          await supabase
+            .from('agropet_store_location')
+            .upsert({ id: 1, latitude: resolvedLat, longitude: resolvedLng });
+        } catch (err) {
+          console.log('Erro ao atualizar agropet_store_location:', err);
+        }
+      }
+
       setLocationConfirmed(confirmLocation);
       if (confirmLocation) {
         Alert.alert(
-          'Endereço Enviado!',
-          'Seu endereço foi salvo com sucesso e sua localização foi confirmada no mapa! 📍\n\nParabéns! Você desbloqueou novos recursos em seu mapa:\n• Ponto exato da sua casa demarcado 🏠\n• Opção de focar/mirar na sua casa 🎯\n• Roteirização/Traçado de rotas 🗺️\n• Legenda completa dos status de entrega',
+          'Endereço da Loja Enviado!',
+          'O endereço da sua loja foi salvo com sucesso e a localização foi confirmada no mapa! 📍\n\nAgora o pino da loja no mapa foi atualizado automaticamente para o novo local.',
           [
             {
               text: 'Ver no Mapa',
               onPress: () => {
-                navigation.navigate('ClientTabs', { screen: 'Mapa' });
+                navigation.navigate('AdminTabs', { screen: 'Mapa' });
               }
             },
             { text: 'OK' }
@@ -650,12 +687,19 @@ export default function AdminProfileScreen() {
                   {photoUri ? (
                     <Image source={{ uri: photoUri }} style={styles.profilePhoto} />
                   ) : (
-                    <View style={[
-                      styles.personIconCircle,
-                      { backgroundColor: isDarkMode ? '#2E2E38' : '#D1D5DB' }
-                    ]}>
-                      <Feather name="user" size={36} color={isDarkMode ? '#FFFFFF' : '#6B7280'} />
-                    </View>
+                    isDarkMode ? (
+                      <View style={[
+                        styles.personIconCircle,
+                        { backgroundColor: '#2E2E38' }
+                      ]}>
+                        <Feather name="user" size={36} color="#FFFFFF" />
+                      </View>
+                    ) : (
+                      <>
+                        <PhotoSvg width={110} height={110} style={{ position: 'absolute' }} />
+                        <PersonIcon13 width={70} height={70} style={{ position: 'absolute' }} />
+                      </>
+                    )
                   )}
                </View>
                <TouchableOpacity onPress={handleSelectPhoto}>
@@ -773,13 +817,14 @@ export default function AdminProfileScreen() {
                        placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                        value={rua}
                        onChangeText={setRua}
+                       onSubmitEditing={() => { if (!rua.trim()) triggerAddressError(); }}
                      />
                      <TouchableOpacity onPress={() => ruaRef.current?.focus()}>
                        <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                      </TouchableOpacity>
                  </View>
                  {showAddressValidationErrors && firstEmptyField === 'rua' && (
-                    <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                    <Animated.Text style={[styles.addressErrorText, { opacity: addressErrorOpacity }]}>Preencha todos os campos para continuar</Animated.Text>
                  )}
                  {/* Dropdown de sugestões */}
                  {addressSuggestions.length > 0 && (
@@ -842,13 +887,14 @@ export default function AdminProfileScreen() {
                            placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
                            value={cep}
                            onChangeText={setCep}
+                           onSubmitEditing={() => { if (!cep.trim()) triggerAddressError(); }}
                          />
                          <TouchableOpacity onPress={() => cepRef.current?.focus()}>
                            <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                          </TouchableOpacity>
                      </View>
                      {showAddressValidationErrors && firstEmptyField === 'cep' && (
-                        <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                        <Animated.Text style={[styles.addressErrorText, { opacity: addressErrorOpacity }]}>Preencha todos os campos para continuar</Animated.Text>
                      )}
                  </View>
                  <View style={[styles.addressFieldGroup, { flex: 1 }]}>
@@ -866,13 +912,14 @@ export default function AdminProfileScreen() {
                            value={numero}
                            onChangeText={setNumero}
                            keyboardType="numeric"
+                           onSubmitEditing={() => { if (!numero.trim()) triggerAddressError(); }}
                          />
                          <TouchableOpacity onPress={() => numeroRef.current?.focus()}>
                            <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                          </TouchableOpacity>
                      </View>
                      {showAddressValidationErrors && firstEmptyField === 'numero' && (
-                        <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                        <Animated.Text style={[styles.addressErrorText, { opacity: addressErrorOpacity }]}>Preencha todos os campos para continuar</Animated.Text>
                      )}
                  </View>
               </View>

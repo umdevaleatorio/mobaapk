@@ -121,10 +121,10 @@ const tabConfigs: any = {
     Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
   AdminProfile: {
-    Home: { Icon: HomeIcon7, Label: HomeLabel7, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon7, Label: MapLabel7, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
-    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon4, Label: HomeLabel4, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon4, Label: MapLabel4, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon4, Label: ManageLabel4, labelW: 55, labelH: 10 },
+    Opções: { Icon: GearIcon, Label: OpcoesLabel, labelW: 42, labelH: 12 },
   },
 };
 
@@ -142,6 +142,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           let isTabActive = isFocused;
           if (route.name === 'Gerenciar' && (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen')) {
             isTabActive = true;
+          }
+          // AdminProfile: nenhuma aba fica selecionada
+          if (activeTab === 'AdminProfile') {
+            isTabActive = false;
           }
 
           const onPress = () => {

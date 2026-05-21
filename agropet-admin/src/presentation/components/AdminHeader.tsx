@@ -6,9 +6,13 @@ import {
   Platform,
   TextInput,
   Text,
+  Image,
+  Animated,
 } from 'react-native';
 import { useUserMenu } from '../contexts/UserMenuContext';
 import { useNavigation } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+import { AuthContext } from '../contexts/AuthContext';
 
 import MenuInicialTitle from '../assets/tela2/header/Menu inicial.svg';
 import OpcoesTitle from '../assets/tela4/parte superior/Opções.svg';
@@ -24,7 +28,7 @@ import AdmIcon from '../assets/tela2/header/Adm.svg';
 import MiniLogo from '../assets/tela2/header/Mini Logo.svg';
 
 interface AdminHeaderProps {
-  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm';
+  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido';
   searchValue?: string;
   onSearchChange?: (text: string) => void;
 }
@@ -33,6 +37,80 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
   const { toggleMenu } = useUserMenu();
   const navigation = useNavigation<any>();
   const [localSearch, setLocalSearch] = React.useState(searchValue);
+  const { user } = React.useContext(AuthContext);
+  const [photoUri, setPhotoUri] = React.useState<string | null>(null);
+
+  const personScale = React.useRef(new Animated.Value(1)).current;
+  const isProfileActive = title === 'perfil_adm';
+
+  const handlePersonPress = () => {
+    personScale.setValue(1);
+    Animated.sequence([
+      Animated.timing(personScale, {
+        toValue: 0.85,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(personScale, {
+        toValue: 1.15,
+        useNativeDriver: true,
+        friction: 4,
+        tension: 100,
+      }),
+      Animated.timing(personScale, {
+        toValue: 1,
+        duration: 80,
+        useNativeDriver: true,
+      })
+    ]).start();
+    toggleMenu();
+  };
+
+  React.useEffect(() => {
+    if (isProfileActive) {
+      personScale.setValue(1);
+      Animated.sequence([
+        Animated.timing(personScale, {
+          toValue: 0.8,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(personScale, {
+          toValue: 1.25,
+          useNativeDriver: true,
+          friction: 3,
+          tension: 150,
+        }),
+        Animated.timing(personScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+  }, [isProfileActive]);
+
+  const loadPhoto = async () => {
+    if (!user) return;
+    try {
+      const avatarKey = `av_${user.id.slice(0, 8)}`;
+      const savedUri = await SecureStore.getItemAsync(avatarKey);
+      setPhotoUri(savedUri);
+    } catch (e) {
+      setPhotoUri(null);
+    }
+  };
+
+  React.useEffect(() => {
+    loadPhoto();
+  }, [user]);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadPhoto();
+    });
+    return unsubscribe;
+  }, [navigation, user]);
 
   React.useEffect(() => {
     setLocalSearch(searchValue);
@@ -62,6 +140,7 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
         {title === 'registrar_produto' && <RegistrarProdutoTitle width={80} height={38} />}
         {title === 'editar_produto' && <Text style={styles.textTitle}>Editar produto</Text>}
         {title === 'perfil_adm' && <Text style={styles.textTitle}>Perfil adm</Text>}
+        {title === 'detalhes_pedido' && <Text style={styles.textTitle}>Detalhes do pedido</Text>}
       </View>
 
       {/* Right side: Adm text or Search Bar + Person Icon */}
@@ -89,11 +168,27 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
           <AdmIcon width={45} height={25} style={{ marginRight: 8 }} />
         )}
         <TouchableOpacity 
-          onPress={toggleMenu} 
+          onPress={handlePersonPress} 
           activeOpacity={0.7}
-          style={styles.personCircle}
         >
-          <PersonIcon width={46} height={46} />
+          <Animated.View
+            style={[
+              styles.personCircle,
+              {
+                backgroundColor: (isProfileActive && !photoUri) ? '#2BE060' : 'rgba(255,255,255,0.3)',
+                transform: [{ scale: personScale }]
+              }
+            ]}
+          >
+            {photoUri ? (
+              <Image 
+                source={{ uri: photoUri }} 
+                style={{ width: 36, height: 36, borderRadius: 18 }} 
+              />
+            ) : (
+              <PersonIcon width={46} height={46} />
+            )}
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </View>
@@ -127,7 +222,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   rightGroup: {
     flex: 1,

@@ -53,15 +53,15 @@ export default function OrdersScreen({ navigation }: any) {
         {item.order_items.map((cartItem: any, index: number) => (
           <View key={index} style={styles.itemRow}>
             <Text style={{ flex: 1, color: '#333' }}>{cartItem.quantity}x {cartItem.products?.name}</Text>
-            <Text style={{ fontWeight: 'bold' }}>R$ {(cartItem.quantity * cartItem.unit_price).toFixed(2)}</Text>
+            <Text style={{ fontWeight: 'bold' }}>R$ {((cartItem.quantity ?? 0) * (cartItem.unit_price ?? 0)).toFixed(2)}</Text>
           </View>
         ))}
 
         <View style={styles.separator} />
 
         <View style={styles.footerRow}>
-          <Text style={styles.method}>PAGTO: {item.payment_method.toUpperCase()}</Text>
-          <Text style={styles.totalText}>Total: R$ {item.total.toFixed(2)}</Text>
+          <Text style={styles.method}>PAGTO: {item.payment_method?.toUpperCase() || ''}</Text>
+          <Text style={styles.totalText}>Total: R$ {(item.total ?? 0).toFixed(2)}</Text>
         </View>
       </View>
     );

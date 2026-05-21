@@ -37,7 +37,7 @@ export const AdminUserMenu = () => {
           <View style={styles.menuContainer}>
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#767676"
+              underlayColor="#F5F5F5"
               onPress={() => handleNavigate('AdminProfile')} // Assuming AdminProfile placeholder or real
             >
               <Text style={styles.menuText}>Ver perfil</Text>
@@ -47,7 +47,7 @@ export const AdminUserMenu = () => {
 
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#767676"
+              underlayColor="#F5F5F5"
               onPress={() => handleNavigate('AdminOrdersScreen')}
             >
               <Text style={styles.menuText}>Ver pedidos</Text>
@@ -57,10 +57,10 @@ export const AdminUserMenu = () => {
 
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#767676"
+              underlayColor="#F5F5F5"
               onPress={() => handleNavigate('Logout')}
             >
-              <Text style={[styles.menuText, { color: '#FF4444' }]}>Sair</Text>
+              <Text style={[styles.menuText, { color: '#C41919' }]}>Sair</Text>
             </TouchableHighlight>
           </View>
         </View>
@@ -78,14 +78,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Platform.OS === 'android' ? 65 : 80, // Moved higher
     right: 20,
-    backgroundColor: '#353A4D',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     width: 160,
     paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#E3E4EB',
     // Shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 4.65,
     elevation: 8,
   },
@@ -94,13 +96,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   menuText: {
-    color: '#FFFFFF',
+    color: '#1C2434',
     fontSize: 14,
     fontWeight: '500',
   },
   menuSeparator: {
     height: 1,
-    backgroundColor: '#4A5064',
+    backgroundColor: '#E3E4EB',
     marginHorizontal: 10,
   },
 });
