@@ -68,6 +68,7 @@ CREATE TABLE public.products (
 CREATE TABLE public.store_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   delivery_radius_km DECIMAL(10,2) DEFAULT 17.0,
+  delivery_active BOOLEAN DEFAULT true NOT NULL,
   opening_time TIME,
   closing_time TIME,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -126,6 +127,13 @@ CREATE POLICY "Admin controla produtos" ON public.products USING ((SELECT role F
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Categorias visíveis a todos." ON public.categories FOR SELECT USING (true);
 
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Leitura pública de store_settings" ON public.store_settings FOR SELECT USING (true);
+CREATE POLICY "Admin controla store_settings" ON public.store_settings FOR ALL
+  USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'admin')
+  WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) = 'admin');
+
 -- Popular o settings com configuração inicial
 INSERT INTO public.store_settings (delivery_radius_km, opening_time, closing_time)
 VALUES (17.0, '08:00', '18:00');
+

@@ -59,6 +59,24 @@ export default function ProductEditScreen() {
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [isEditingQty, setIsEditingQty] = useState(false);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setSearchText('');
+      setActiveCategory(product?.category_id || null);
+      setPhotoUri(product?.image_url || null);
+      setPhotoBase64(null);
+      setName(product?.name || '');
+      setDescription(product?.description || '');
+      setPrice(product?.price?.toString() || '');
+      setQuantity(product?.stock?.toString() || '');
+      setIsEditingName(false);
+      setIsEditingDesc(false);
+      setIsEditingPrice(false);
+      setIsEditingQty(false);
+    });
+    return unsubscribe;
+  }, [navigation, product]);
+
   // Refs to focus inputs
   const nameRef = useRef<TextInput>(null);
   const descRef = useRef<TextInput>(null);
@@ -159,7 +177,14 @@ export default function ProductEditScreen() {
       <StatusBar backgroundColor={colors.headerBackground} barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header with search bar */}
-      <AdminHeader title="editar_produto" searchValue={searchText} onSearchChange={setSearchText} />
+      <AdminHeader 
+        title="editar_produto" 
+        searchValue={searchText} 
+        onSearchChange={(text) => {
+          setSearchText(text);
+          navigation.navigate('Gerenciar', { searchText: text });
+        }} 
+      />
 
       {/* Filter Bar */}
       <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
@@ -199,7 +224,8 @@ export default function ProductEditScreen() {
                 <TouchableOpacity
                   key={category}
                   onPress={() => {
-                    setActiveCategory(activeCategory === category ? null : category);
+                    setActiveCategory(category);
+                    navigation.navigate('Gerenciar', { categories: [category] });
                   }}
                   activeOpacity={0.7}
                   style={[
@@ -265,7 +291,7 @@ export default function ProductEditScreen() {
                   setTimeout(() => nameRef.current?.focus(), 100);
                 }}
               >
-                <EditIconNome width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
+                <EditIconNome width={16} height={16} fill={isDarkMode ? '#FFE082' : '#042A7D'} color={isDarkMode ? '#FFE082' : '#042A7D'} />
               </TouchableOpacity>
             </View>
 
@@ -290,7 +316,7 @@ export default function ProductEditScreen() {
                   setTimeout(() => descRef.current?.focus(), 100);
                 }}
               >
-                <EditIconDesc width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
+                <EditIconDesc width={16} height={16} fill={isDarkMode ? '#FFE082' : '#042A7D'} color={isDarkMode ? '#FFE082' : '#042A7D'} />
               </TouchableOpacity>
             </View>
 
@@ -318,7 +344,7 @@ export default function ProductEditScreen() {
                       setTimeout(() => priceRef.current?.focus(), 100);
                     }}
                   >
-                    <EditIconPreco width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
+                    <EditIconPreco width={16} height={16} fill={isDarkMode ? '#FFE082' : '#042A7D'} color={isDarkMode ? '#FFE082' : '#042A7D'} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -346,7 +372,7 @@ export default function ProductEditScreen() {
                       setTimeout(() => qtyRef.current?.focus(), 100);
                     }}
                   >
-                    <EditIconQtd width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
+                    <EditIconQtd width={16} height={16} fill={isDarkMode ? '#FFE082' : '#042A7D'} color={isDarkMode ? '#FFE082' : '#042A7D'} />
                   </TouchableOpacity>
                 </View>
               </View>

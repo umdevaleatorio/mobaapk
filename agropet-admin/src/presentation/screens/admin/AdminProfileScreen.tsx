@@ -55,6 +55,7 @@ export default function AdminProfileScreen() {
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showImagePickerOptions, setShowImagePickerOptions] = useState(false);
+  const [showViewPhotoModal, setShowViewPhotoModal] = useState(false);
 
   const [rua, setRua] = useState('');
   const [bairro, setBairro] = useState('');
@@ -1084,6 +1085,21 @@ export default function AdminProfileScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Alterar Foto de Perfil</Text>
             
+            {photoUri && (
+              <>
+                <TouchableOpacity 
+                  style={styles.modalOption} 
+                  onPress={() => {
+                    setShowImagePickerOptions(false);
+                    setShowViewPhotoModal(true);
+                  }}
+                >
+                  <Text style={styles.modalOptionText}>Ver foto</Text>
+                </TouchableOpacity>
+                <View style={styles.modalSeparator} />
+              </>
+            )}
+            
             <TouchableOpacity style={styles.modalOption} onPress={openCamera}>
               <Text style={styles.modalOptionText}>Tirar Foto</Text>
             </TouchableOpacity>
@@ -1118,6 +1134,36 @@ export default function AdminProfileScreen() {
             >
               <Text style={[styles.modalOptionText, styles.modalCancelText]}>Cancelar</Text>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Premium View Photo Modal */}
+      <Modal
+        visible={showViewPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowViewPhotoModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.viewPhotoOverlay}
+          activeOpacity={1}
+          onPress={() => setShowViewPhotoModal(false)}
+        >
+          <View style={styles.viewPhotoContainer}>
+            <TouchableOpacity
+              style={styles.closeViewPhotoBtn}
+              onPress={() => setShowViewPhotoModal(false)}
+            >
+              <Feather name="x" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            {photoUri && (
+              <Image
+                source={{ uri: photoUri }}
+                style={styles.viewPhotoSquare}
+                resizeMode="cover"
+              />
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1492,5 +1538,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 15,
+  },
+  viewPhotoOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewPhotoContainer: {
+    width: '80%',
+    aspectRatio: 1,
+    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  viewPhotoSquare: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  closeViewPhotoBtn: {
+    position: 'absolute',
+    top: -45,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 8,
   },
 });

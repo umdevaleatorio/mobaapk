@@ -94,7 +94,24 @@ export default function OrdersScreen({ navigation }: any) {
     }
   };
 
-  const toggleDropdown = (orderId: string) => {
+  const toggleDropdown = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_active')
+        .maybeSingle();
+
+      if (data && !error && data.delivery_active === false) {
+        Alert.alert(
+          'Rastreamento Desativado',
+          'Não é possível Rastrear o pedido no momento pois o frete encontra-se inativo'
+        );
+        return;
+      }
+    } catch (e) {
+      console.log('Error checking delivery active status:', e);
+    }
+
     if (activeDropdownId === orderId) {
       setActiveDropdownId(null);
     } else {

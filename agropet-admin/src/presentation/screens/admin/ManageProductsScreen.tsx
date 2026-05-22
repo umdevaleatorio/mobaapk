@@ -13,7 +13,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -36,53 +36,101 @@ import ToggleInactiveSvg from '../../assets/tela7/produtos/produto 4/Adicionar/R
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Ração': ['ração', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco'],
+  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha'],
+  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste'],
+  'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario']
+};
+
+const isProductInCategories = (product: any, categories: string[]) => {
+  if (categories.length === 0) return true;
+  
+  const name = (product.name || '').toLowerCase();
+  const description = (product.description || '').toLowerCase();
+  
+  return categories.some(category => {
+    const keywords = CATEGORY_KEYWORDS[category] || [];
+    return keywords.some(keyword => 
+      name.includes(keyword.toLowerCase()) || 
+      description.includes(keyword.toLowerCase())
+    );
+  });
+};
+
 export default function ManageProductsScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [hasError, setHasError] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
   
   // Selection mode for mass deletion
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
 
-  const fetchProducts = async (currentCategories = activeCategories) => {
+  const fetchProducts = async () => {
     setLoading(true);
-    let query = supabase
+    setHasError(false);
+    const { data, error } = await supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false });
       
-    if (currentCategories.length > 0) {
-      query = query.in('category_id', currentCategories);
-    }
-
-    const { data, error } = await query;
     if (!error) {
       setProducts(data || []);
     } else {
-      Alert.alert('Erro', 'Não foi possível carregar os produtos.');
+      setProducts([]);
+      setHasError(true);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProducts();
-  }, [activeCategories]);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      setActiveCategories([]);
-      fetchProducts([]);
+      const paramsSearchText = route.params?.searchText;
+      const paramsCategories = route.params?.categories;
+
+      if (paramsSearchText !== undefined || paramsCategories !== undefined) {
+        const text = paramsSearchText || '';
+        const cats = paramsCategories || [];
+        setSearchText(text);
+        setActiveCategories(cats);
+        setStatusFilter('Todos');
+        fetchProducts();
+        // Clear navigation params
+        navigation.setParams({ searchText: undefined, categories: undefined });
+      } else {
+        setSearchText('');
+        setActiveCategories([]);
+        setStatusFilter('Todos');
+        fetchProducts();
+      }
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, route.params]);
 
-  const filteredProducts = products.filter(p =>
-    p.name?.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name?.toLowerCase().includes(searchText.toLowerCase());
+    const matchesCategory = isProductInCategories(p, activeCategories);
+    const isActive = p.active !== false;
+    
+    if (statusFilter === 'Ativos') {
+      return matchesSearch && matchesCategory && isActive;
+    }
+    if (statusFilter === 'Inativos') {
+      return matchesSearch && matchesCategory && !isActive;
+    }
+    return matchesSearch && matchesCategory;
+  });
 
   const toggleProductStatus = async (product: any) => {
     const newStatus = !product.active;
@@ -190,7 +238,7 @@ export default function ManageProductsScreen() {
             if (!selectionMode) navigation.navigate('ProductEditScreen', { product: item });
           }}
         >
-          <EditIcon width={20} height={20} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
+          <EditIcon width={20} height={20} fill={isDarkMode ? '#FFE082' : '#6C6C6C'} color={isDarkMode ? '#FFE082' : '#6C6C6C'} />
         </TouchableOpacity>
 
         {/* Trash icon - bottom-right, inside the bounds to ensure touch event works on Android */}
@@ -400,6 +448,35 @@ export default function ManageProductsScreen() {
         </View>
       </View>
 
+      {/* Status Filter Buttons */}
+      <View style={styles.statusFilterRow}>
+        {(['Todos', 'Ativos', 'Inativos'] as const).map((status) => {
+          const isSelected = statusFilter === status;
+          let btnBg = isDarkMode ? '#2E2E38' : '#EAEAEF';
+          let textColor = isDarkMode ? '#FFFFFF' : '#1C2434';
+
+          if (isSelected) {
+            textColor = '#FFFFFF';
+            if (status === 'Todos') btnBg = '#3B82F6';
+            else if (status === 'Ativos') btnBg = '#22C55E';
+            else btnBg = '#EF4444';
+          }
+
+          return (
+            <TouchableOpacity
+              key={status}
+              style={[styles.statusFilterBtn, { backgroundColor: btnBg }]}
+              onPress={() => setStatusFilter(status)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.statusFilterText, { color: textColor }]}>
+                {status}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* ========== LISTA DE PRODUTOS (vertical) ========== */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -414,7 +491,9 @@ export default function ManageProductsScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textDark }]}>Nenhum produto encontrado</Text>
+              <Text style={[styles.emptyText, { color: isDarkMode ? '#8E8E93' : '#919191', textAlign: 'center' }]}>
+                {hasError ? "Não foi possível carregar os produtos." : "Este produto não foi encontrado/registrado ainda."}
+              </Text>
             </View>
           }
         />
@@ -679,20 +758,44 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     height: '100%',
   },
-  // Edit icon - top right, inside the card container boundaries to preserve touch area
+  // Edit icon - top right corner, positioned over the edge
   editIconBtn: {
     position: 'absolute',
-    top: 6,
-    right: 8,
-    zIndex: 2,
+    top: -8,
+    right: -8,
+    zIndex: 10,
     padding: 6,
   },
-  // Trash icon - bottom right, aligned with edit
+  // Trash icon - bottom right corner, positioned over the edge
   trashIconBtn: {
     position: 'absolute',
-    bottom: 6,
-    right: 8,
-    zIndex: 2,
+    bottom: -8,
+    right: -8,
+    zIndex: 10,
     padding: 6,
+  },
+  statusFilterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  statusFilterBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  statusFilterText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

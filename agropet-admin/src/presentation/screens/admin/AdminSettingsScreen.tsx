@@ -11,6 +11,7 @@ import {
   Modal,
   Alert,
   Animated,
+  Linking,
 } from 'react-native';
 import { AuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -81,8 +82,109 @@ export default function AdminSettingsScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
 
   // State for radius
-  const [radius, setRadius] = useState('13');
+  const [radius, setRadius] = useState('17');
   const [isEditingRadius, setIsEditingRadius] = useState(false);
+
+  const fetchRadius = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_radius_km, delivery_active')
+        .maybeSingle();
+      
+      if (data && !error) {
+        if (data.delivery_radius_km !== null) {
+          setRadius(String(Math.round(data.delivery_radius_km)));
+        } else {
+          setRadius('17');
+        }
+        if (data.delivery_active !== undefined) {
+          setDeliveryDisabled(!data.delivery_active);
+        }
+      } else {
+        setRadius('17');
+        setDeliveryDisabled(false);
+      }
+    } catch (e) {
+      console.log('Error loading radius/delivery from DB:', e);
+      setRadius('17');
+      setDeliveryDisabled(false);
+    }
+  };
+
+  const handleSaveRadius = async (newRadius: string) => {
+    const parsed = parseFloat(newRadius);
+    if (isNaN(parsed) || parsed <= 0) {
+      Alert.alert('Erro', 'Por favor, insira um número válido maior que zero.');
+      return;
+    }
+    
+    try {
+      const { data: existing, error: selectError } = await supabase
+        .from('store_settings')
+        .select('id')
+        .maybeSingle();
+        
+      if (selectError) throw selectError;
+      
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('store_settings')
+          .update({ delivery_radius_km: parsed })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('store_settings')
+          .insert({ delivery_radius_km: parsed });
+        if (insertError) throw insertError;
+      }
+      
+      setRadius(String(Math.round(parsed)));
+      setIsEditingRadius(false);
+      Alert.alert('Sucesso', 'Raio de alcance atualizado com sucesso!');
+    } catch (e) {
+      console.error('Error saving radius:', e);
+      Alert.alert('Erro', 'Não foi possível salvar o raio de alcance.');
+    }
+  };
+
+  const handleToggleDelivery = async (newDisabledState: boolean) => {
+    try {
+      const activeValue = !newDisabledState;
+      
+      const { data: existing, error: selectError } = await supabase
+        .from('store_settings')
+        .select('id')
+        .maybeSingle();
+        
+      if (selectError) throw selectError;
+      
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('store_settings')
+          .update({ delivery_active: activeValue })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('store_settings')
+          .insert({ delivery_active: activeValue });
+        if (insertError) throw insertError;
+      }
+      
+      setDeliveryDisabled(newDisabledState);
+      Alert.alert(
+        'Sucesso', 
+        newDisabledState 
+          ? 'Frete desativado com sucesso!' 
+          : 'Frete ativado com sucesso!'
+      );
+    } catch (e) {
+      console.error('Error toggling delivery:', e);
+      Alert.alert('Erro', 'Não foi possível alterar a configuração de frete.');
+    }
+  };
 
   // State for delivery disable toggle
   const [deliveryDisabled, setDeliveryDisabled] = useState(false);
@@ -116,6 +218,65 @@ export default function AdminSettingsScreen() {
   const [locationPermission, setLocationPermission] = useState<string>('checking');
   const [notificationsPermission, setNotificationsPermission] = useState<string>('checking');
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  // === DEAUTHORIZE STATES ===
+  const [deauthModalVisible, setDeauthModalVisible] = useState(false);
+  const [deauthFeature, setDeauthFeature] = useState<{ name: string; key: string } | null>(null);
+
+  // === REQUEST PERMISSION STATES ===
+  const [reqPermModalVisible, setReqPermModalVisible] = useState(false);
+  const [reqPermFeature, setReqPermFeature] = useState<{ key: string; name: string } | null>(null);
+
+  const getFeatureReqDescription = (key: string) => {
+    switch (key) {
+      case 'camera':
+        return 'O painel de administração necessita de acesso à câmera para que você possa tirar fotos em tempo real dos seus produtos na hora de cadastrá-los ou editá-los no estoque, além de poder capturar sua foto de perfil.';
+      case 'gallery':
+        return 'O painel de administração precisa de acesso à sua galeria de fotos para permitir que você escolha fotos de produtos já salvas em seu dispositivo ao criar novos itens ou atualizar o catálogo, ou para alterar sua foto de perfil.';
+      case 'location':
+        return 'O aplicativo do administrador precisa de acesso à sua localização GPS em tempo real para permitir o rastreamento das entregas no mapa, transmitindo de forma segura as coordenadas do entregador até a casa do cliente durante o trajeto.';
+      case 'notifications':
+        return 'As notificações push mantêm você instantaneamente informado sobre novos pedidos recebidos, cancelamentos por parte dos clientes e atualizações importantes do sistema, mesmo com o aplicativo fechado.';
+      default:
+        return '';
+    }
+  };
+
+  const handlePressPermission = (key: string, name: string, currentStatus: string) => {
+    if (currentStatus === 'granted') {
+      setDeauthFeature({ key, name });
+      setDeauthModalVisible(true);
+    } else {
+      setReqPermFeature({ key, name });
+      setReqPermModalVisible(true);
+    }
+  };
+
+  const handleConfirmRequestPermission = () => {
+    if (!reqPermFeature) return;
+    const { key } = reqPermFeature;
+    setReqPermModalVisible(false);
+    
+    if (key === 'camera') requestCamera();
+    if (key === 'gallery') requestGallery();
+    if (key === 'location') requestLocation();
+    if (key === 'notifications') requestNotifications();
+    
+    setReqPermFeature(null);
+  };
+
+  const handleConfirmDeauth = () => {
+    if (!deauthFeature) return;
+    if (deauthFeature.key === 'camera') setCameraPermission('denied');
+    if (deauthFeature.key === 'gallery') setGalleryPermission('denied');
+    if (deauthFeature.key === 'location') setLocationPermission('denied');
+    if (deauthFeature.key === 'notifications') {
+      setNotificationsPermission('denied');
+      setNotificationsEnabled(false);
+    }
+    setDeauthModalVisible(false);
+    setDeauthFeature(null);
+  };
 
   // === ANIMATION VALUES ===
   const themeSwitchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current;
@@ -183,6 +344,7 @@ export default function AdminSettingsScreen() {
     };
     checkInitialNotifications();
     checkAllPermissions();
+    fetchRadius();
   }, []);
 
   // ======= EMAIL ACTIONS =======
@@ -376,14 +538,21 @@ export default function AdminSettingsScreen() {
 
     if (notificationsEnabled) {
       setNotificationsEnabled(false);
+      setNotificationsPermission('denied');
       if (user) {
         await supabase.from('users').update({ push_token: null }).eq('id', user.id);
       }
       Alert.alert('Notificações', 'Você desativou as notificações.');
     } else {
+      if (notificationsPermission !== 'granted') {
+        setReqPermFeature({ key: 'notifications', name: 'Notificações Push' });
+        setReqPermModalVisible(true);
+        return;
+      }
       const token = await registerForPushNotificationsAsync();
       if (token) {
         setNotificationsEnabled(true);
+        setNotificationsPermission('granted');
         if (user) {
           await supabase.from('users').update({ push_token: token }).eq('id', user.id);
         }
@@ -391,6 +560,7 @@ export default function AdminSettingsScreen() {
       } else {
         // Fallback for simulation
         setNotificationsEnabled(true);
+        setNotificationsPermission('granted');
         Alert.alert(
           'Notificações de Teste Ativas',
           'Como o push do sistema não pôde ser registrado (comum no Expo Go ou se a permissão foi negada), ativamos o modo de simulação com notificações locais para você testar!',
@@ -423,18 +593,48 @@ export default function AdminSettingsScreen() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     setCameraPermission(status);
     checkAllPermissions();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissão Necessária',
+        'Para ativar a Câmera, você precisa habilitar a permissão nas configurações do sistema do seu celular.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
   };
 
   const requestGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     setGalleryPermission(status);
     checkAllPermissions();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissão Necessária',
+        'Para ativar o acesso à Galeria, você precisa habilitar a permissão nas configurações do sistema do seu celular.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
   };
 
   const requestLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     setLocationPermission(status);
     checkAllPermissions();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissão Necessária',
+        'Para ativar a Localização, você precisa habilitar a permissão nas configurações do sistema do seu celular.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
   };
 
   const requestNotifications = async () => {
@@ -448,6 +648,14 @@ export default function AdminSettingsScreen() {
       }
     } else {
       setNotificationsEnabled(false);
+      Alert.alert(
+        'Permissão Necessária',
+        'Para ativar as Notificações, você precisa habilitar a permissão nas configurações do sistema do seu celular.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
     }
     checkAllPermissions();
   };
@@ -577,7 +785,7 @@ export default function AdminSettingsScreen() {
                     onChangeText={setRadius}
                     keyboardType="numeric"
                     autoFocus
-                    onBlur={() => setIsEditingRadius(false)}
+                    onSubmitEditing={() => handleSaveRadius(radius)}
                   />
                 ) : (
                   <Text style={[styles.fieldValue, { color: isDarkMode ? '#A8A8B3' : '#888', fontWeight: 'bold' }]}>
@@ -587,17 +795,32 @@ export default function AdminSettingsScreen() {
 
                 <View style={{ marginRight: 10 }}>
                   {isDarkMode ? (
-                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '500' }}>de alcance</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '500' }}>de alcance</Text>
                   ) : (
-                    <DeAlcanceText width={65} height={12} />
+                    <DeAlcanceText width={76} height={14} />
                   )}
                 </View>
                 
-                <TouchableOpacity style={styles.alterarBtnInside} onPress={() => setIsEditingRadius(true)}>
-                  {isDarkMode ? (
-                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>Alterar</Text>
+                <TouchableOpacity 
+                  style={styles.alterarBtnInside} 
+                  onPress={() => {
+                    if (isEditingRadius) {
+                      handleSaveRadius(radius);
+                    } else {
+                      setIsEditingRadius(true);
+                    }
+                  }}
+                >
+                  {isEditingRadius ? (
+                    <Text style={{ color: isDarkMode ? '#FFC107' : '#042A7D', fontWeight: 'bold', fontSize: 13 }}>
+                      Salvar
+                    </Text>
                   ) : (
-                    <RaioAlterar width={50} height={12} />
+                    isDarkMode ? (
+                      <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>Alterar</Text>
+                    ) : (
+                      <RaioAlterar width={50} height={12} />
+                    )
                   )}
                 </TouchableOpacity>
               </View>
@@ -698,7 +921,7 @@ export default function AdminSettingsScreen() {
               <View style={styles.toggleSpacer} />
               <CustomSwitch 
                 active={deliveryDisabled} 
-                onPress={() => setDeliveryDisabled(!deliveryDisabled)} 
+                onPress={() => handleToggleDelivery(!deliveryDisabled)} 
                 colorActive="#FF3B30" 
                 animValue={deliverySwitchAnim} 
                 isDarkMode={isDarkMode}
@@ -926,7 +1149,6 @@ export default function AdminSettingsScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity 
-                  disabled={cameraPermission === 'granted'}
                   style={{ 
                     backgroundColor: cameraPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
                     paddingHorizontal: 12, 
@@ -934,14 +1156,14 @@ export default function AdminSettingsScreen() {
                     borderRadius: 6, 
                     opacity: cameraPermission === 'granted' ? 0.6 : 1 
                   }}
-                  onPress={requestCamera}
+                  onPress={() => handlePressPermission('camera', 'Câmera', cameraPermission)}
                 >
                   <Text style={{ 
                     color: cameraPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
                     fontWeight: 'bold', 
                     fontSize: 12 
                   }}>
-                    {cameraPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                    {cameraPermission === 'granted' ? 'Desautorizar' : 'Solicitar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -955,7 +1177,6 @@ export default function AdminSettingsScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity 
-                  disabled={galleryPermission === 'granted'}
                   style={{ 
                     backgroundColor: galleryPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
                     paddingHorizontal: 12, 
@@ -963,14 +1184,14 @@ export default function AdminSettingsScreen() {
                     borderRadius: 6, 
                     opacity: galleryPermission === 'granted' ? 0.6 : 1 
                   }}
-                  onPress={requestGallery}
+                  onPress={() => handlePressPermission('gallery', 'Galeria de Fotos', galleryPermission)}
                 >
                   <Text style={{ 
                     color: galleryPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
                     fontWeight: 'bold', 
                     fontSize: 12 
                   }}>
-                    {galleryPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                    {galleryPermission === 'granted' ? 'Desautorizar' : 'Solicitar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -984,7 +1205,6 @@ export default function AdminSettingsScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity 
-                  disabled={locationPermission === 'granted'}
                   style={{ 
                     backgroundColor: locationPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
                     paddingHorizontal: 12, 
@@ -992,14 +1212,14 @@ export default function AdminSettingsScreen() {
                     borderRadius: 6, 
                     opacity: locationPermission === 'granted' ? 0.6 : 1 
                   }}
-                  onPress={requestLocation}
+                  onPress={() => handlePressPermission('location', 'Localização (GPS)', locationPermission)}
                 >
                   <Text style={{ 
                     color: locationPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
                     fontWeight: 'bold', 
                     fontSize: 12 
                   }}>
-                    {locationPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                    {locationPermission === 'granted' ? 'Desautorizar' : 'Solicitar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1013,7 +1233,6 @@ export default function AdminSettingsScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity 
-                  disabled={notificationsPermission === 'granted'}
                   style={{ 
                     backgroundColor: notificationsPermission === 'granted' ? (isDarkMode ? '#3E3E4A' : '#E3E4EB') : colors.accent, 
                     paddingHorizontal: 12, 
@@ -1021,14 +1240,14 @@ export default function AdminSettingsScreen() {
                     borderRadius: 6, 
                     opacity: notificationsPermission === 'granted' ? 0.6 : 1 
                   }}
-                  onPress={requestNotifications}
+                  onPress={() => handlePressPermission('notifications', 'Notificações Push', notificationsPermission)}
                 >
                   <Text style={{ 
                     color: notificationsPermission === 'granted' ? (isDarkMode ? '#A8A8B3' : '#767676') : '#FFFFFF', 
                     fontWeight: 'bold', 
                     fontSize: 12 
                   }}>
-                    {notificationsPermission === 'granted' ? 'Ativo' : 'Solicitar'}
+                    {notificationsPermission === 'granted' ? 'Desautorizar' : 'Solicitar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1040,6 +1259,60 @@ export default function AdminSettingsScreen() {
             >
               <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>Fechar Gerenciador</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE CONFIRMAÇÃO DE DESAUTORIZAÇÃO */}
+      <Modal visible={deauthModalVisible} transparent={true} animationType="fade" onRequestClose={() => setDeauthModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF', borderColor: isDarkMode ? '#3E3E4A' : 'transparent', borderWidth: isDarkMode ? 1 : 0 }]}>
+            <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434', fontSize: 18 }]}>Confirmar Ação</Text>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676', marginTop: 10, marginBottom: 20 }]}>
+              Deseja remover a permissão de {deauthFeature?.name}?
+            </Text>
+            <View style={styles.whiteModalButtons}>
+              <TouchableOpacity 
+                style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} 
+                onPress={() => setDeauthModalVisible(false)}
+              >
+                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Não</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]} 
+                onPress={handleConfirmDeauth}
+              >
+                <Text style={styles.whiteModalBtnTextConfirm}>Sim</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE EXPLICAÇÃO DE PERMISSÃO */}
+      <Modal visible={reqPermModalVisible} transparent={true} animationType="fade" onRequestClose={() => setReqPermModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF', borderColor: isDarkMode ? '#3E3E4A' : 'transparent', borderWidth: isDarkMode ? 1 : 0 }]}>
+            <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434', fontSize: 18 }]}>
+              Acesso à/ao {reqPermFeature?.name}
+            </Text>
+            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676', marginTop: 10, marginBottom: 20 }]}>
+              {reqPermFeature ? getFeatureReqDescription(reqPermFeature.key) : ''}
+            </Text>
+            <View style={styles.whiteModalButtons}>
+              <TouchableOpacity 
+                style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} 
+                onPress={() => setReqPermModalVisible(false)}
+              >
+                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]} 
+                onPress={handleConfirmRequestPermission}
+              >
+                <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

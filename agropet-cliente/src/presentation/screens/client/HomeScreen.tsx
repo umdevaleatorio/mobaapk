@@ -39,6 +39,8 @@ export default function HomeScreen() {
   const { addToCart } = useContext(CartContext);
 
   const [esgotadoAlert, setEsgotadoAlert] = useState<string | null>(null);
+  const [deliveryActive, setDeliveryActive] = useState(true);
+  const [showReactivatedAlert, setShowReactivatedAlert] = useState(false);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -77,9 +79,76 @@ export default function HomeScreen() {
     }
   };
 
+  const checkDeliveryStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_active')
+        .maybeSingle();
+        
+      if (data && !error && data.delivery_active !== undefined) {
+        const currentActive = data.delivery_active;
+        setDeliveryActive(currentActive);
+        
+        // Verificar se houve mudança de inativo para ativo (reativação)
+        const lastKnownRaw = await SecureStore.getItemAsync('last_known_delivery_active');
+        if (lastKnownRaw !== null) {
+          const lastKnown = lastKnownRaw === 'true';
+          if (!lastKnown && currentActive) {
+            setShowReactivatedAlert(true);
+            await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+          }
+        }
+        await SecureStore.setItemAsync('last_known_delivery_active', String(currentActive));
+        
+        // Verificar se o alerta de reativado deve ser mostrado
+        const seenAlertRaw = await SecureStore.getItemAsync('seen_reactivated_alert');
+        if (currentActive && seenAlertRaw === 'false') {
+          setShowReactivatedAlert(true);
+        }
+      }
+    } catch (e) {
+      console.log('Erro ao verificar status do frete na Home:', e);
+    }
+  };
+
+  const handleCloseReactivated = async () => {
+    setShowReactivatedAlert(false);
+    await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
+  };
+
   useEffect(() => {
     fetchProducts();
     checkRecentEsgotados();
+    checkDeliveryStatus();
+
+    const channel = supabase
+      .channel('store_settings_home')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        async (payload) => {
+          if (payload.new && (payload.new as any).delivery_active !== undefined) {
+            const currentActive = (payload.new as any).delivery_active;
+            setDeliveryActive(currentActive);
+            
+            const lastKnownRaw = await SecureStore.getItemAsync('last_known_delivery_active');
+            if (lastKnownRaw !== null) {
+              const lastKnown = lastKnownRaw === 'true';
+              if (!lastKnown && currentActive) {
+                setShowReactivatedAlert(true);
+                await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+              }
+            }
+            await SecureStore.setItemAsync('last_known_delivery_active', String(currentActive));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filteredProducts = products.filter(p => {
@@ -159,6 +228,35 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity onPress={() => setEsgotadoAlert(null)} style={{ marginLeft: 'auto', paddingLeft: 10 }}>
             <Feather name="x" size={16} color={isDarkMode ? '#FF8A8A' : '#D32F2F'} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Aviso de Frete Inativo */}
+      {!deliveryActive && (
+        <View style={[
+          styles.freteBanner,
+          { backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0', borderColor: '#FF3B30' }
+        ]}>
+          <Feather name="alert-circle" size={18} color="#FF3B30" style={{ marginRight: 8, marginTop: 2 }} />
+          <Text style={[styles.freteBannerText, { color: isDarkMode ? '#FF8A8A' : '#D32F2F' }]}>
+            Aviso: O frete encontra-se desativado no momento. Nesse período, você não conseguirá ver o mapa, rastrear pedido e nem prosseguir com a compra, mas você pode salvar suas compras no carrinho até ele voltar. Obrigado pela compreensão. Voltaremos em breve!
+          </Text>
+        </View>
+      )}
+
+      {/* Alerta de Frete Reativado */}
+      {deliveryActive && showReactivatedAlert && (
+        <View style={[
+          styles.freteBanner,
+          { backgroundColor: isDarkMode ? '#1D2A3A' : '#E8F4FD', borderColor: '#2196F3' }
+        ]}>
+          <Feather name="info" size={18} color="#2196F3" style={{ marginRight: 8, marginTop: 2 }} />
+          <Text style={[styles.freteBannerText, { color: isDarkMode ? '#8AB4F8' : '#0D47A1' }]}>
+            O frete foi reativado, Uhuu 🥳! Você pode voltar a comprar, ver o mapa e rastrear sua entrega
+          </Text>
+          <TouchableOpacity onPress={handleCloseReactivated} style={{ marginLeft: 'auto', paddingLeft: 10 }}>
+            <Feather name="x" size={16} color={isDarkMode ? '#8AB4F8' : '#0D47A1'} />
           </TouchableOpacity>
         </View>
       )}
@@ -321,5 +419,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     flexShrink: 1,
+  },
+  freteBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  freteBannerText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    flexShrink: 1,
+    lineHeight: 18,
   },
 });

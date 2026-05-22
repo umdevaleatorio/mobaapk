@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="100%" height="auto" style="overflow: visible;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="100%" height="auto">
   <!-- Google Fonts import is not supported inside img tags, so we use standard system sans-serif fonts optimized for modern IDEs/Browsers -->
   <defs>
     <linearGradient id="marrakashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -98,22 +98,19 @@
   <circle class="glow-circle" cx="800" cy="80" r="140" fill="#E25822" opacity="0.4" filter="url(#glow)" />
   <circle class="glow-circle" cx="100" cy="180" r="80" fill="#FF7A45" opacity="0.15" filter="url(#glow)" />
 
-  <!-- Outer Positioning Group (centered vertically at y=40, padded on the right at x=680) -->
-  <g transform="translate(680, 40)">
-    <!-- Inner Floating Animation Group -->
-    <g class="pet-icon">
-      <!-- Shield / Badge Frame -->
-      <path d="M 60,0 L 120,30 L 120,90 C 120,130 90,150 60,160 C 30,150 0,130 0,90 L 0,30 Z" fill="#161B22" stroke="url(#marrakashGrad)" stroke-width="2" />
-      <!-- Wheat/Leaf (Agro) -->
-      <path d="M 45,55 Q 60,35 60,75 M 60,55 Q 75,35 75,75" stroke="#FF9E7D" stroke-width="3" stroke-linecap="round" fill="none" />
-      <path d="M 60,35 Q 60,115 60,115" stroke="url(#marrakashGrad)" stroke-width="3.5" stroke-linecap="round" />
-      <!-- Paw Print (Pet) -->
-      <circle cx="60" cy="95" r="11" fill="url(#marrakashGrad)" />
-      <circle cx="45" cy="80" r="5" fill="#FF9E7D" />
-      <circle cx="75" cy="80" r="5" fill="#FF9E7D" />
-      <circle cx="37" cy="93" r="5.5" fill="#FF9E7D" />
-      <circle cx="83" cy="93" r="5.5" fill="#FF9E7D" />
-    </g>
+  <!-- Logo Icon Group (Floating Pet & Agro Elements) -->
+  <g class="pet-icon" transform="translate(680, 50)">
+    <!-- Shield / Badge Frame -->
+    <path d="M 60,0 L 120,30 L 120,90 C 120,130 90,150 60,160 C 30,150 0,130 0,90 L 0,30 Z" fill="#161B22" stroke="url(#marrakashGrad)" stroke-width="2" />
+    <!-- Wheat/Leaf (Agro) -->
+    <path d="M 45,55 Q 60,35 60,75 M 60,55 Q 75,35 75,75" stroke="#FF9E7D" stroke-width="3" stroke-linecap="round" fill="none" />
+    <path d="M 60,35 Q 60,115 60,115" stroke="url(#marrakashGrad)" stroke-width="3.5" stroke-linecap="round" />
+    <!-- Paw Print (Pet) -->
+    <circle cx="60" cy="95" r="11" fill="url(#marrakashGrad)" />
+    <circle cx="45" cy="80" r="5" fill="#FF9E7D" />
+    <circle cx="75" cy="80" r="5" fill="#FF9E7D" />
+    <circle cx="37" cy="93" r="5.5" fill="#FF9E7D" />
+    <circle cx="83" cy="93" r="5.5" fill="#FF9E7D" />
   </g>
 
   <!-- Text Header Section -->

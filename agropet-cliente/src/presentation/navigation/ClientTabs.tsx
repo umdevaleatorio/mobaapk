@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/client/HomeScreen';
 import MapScreen from '../screens/client/MapScreen';
 import CartScreen from '../screens/client/CartScreen';
 import SettingsScreen from '../screens/client/SettingsScreen';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../../data/datasources/supabase/client';
+
 // === BARRA SVGs Tela 4 (Menu ativo, outros inativos) ===
 import HomeIcon from '../assets/tela4/barra/Home.svg';
 import MapIcon from '../assets/tela4/barra/Map.svg';
@@ -49,13 +51,52 @@ import OpcoesLabel8 from '../assets/tela8/barra/OpcoesLabel.svg';
 const Tab = createBottomTabNavigator();
 
 export default function ClientTabs() {
+  const [deliveryActive, setDeliveryActive] = useState(true);
+
+  useEffect(() => {
+    const fetchDeliveryStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('delivery_active')
+          .maybeSingle();
+        
+        if (data && !error && data.delivery_active !== undefined) {
+          setDeliveryActive(data.delivery_active);
+        }
+      } catch (e) {
+        console.log('Error fetching delivery status in tabs:', e);
+      }
+    };
+
+    fetchDeliveryStatus();
+
+    // Sincronização em tempo real (Supabase Realtime)
+    const channel = supabase
+      .channel('store_settings_tabs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).delivery_active !== undefined) {
+            setDeliveryActive((payload.new as any).delivery_active);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <CustomTabBar {...props} />}
     >
       <Tab.Screen name="Menu" component={HomeScreen} />
-      <Tab.Screen name="Mapa" component={MapScreen} />
+      {deliveryActive && <Tab.Screen name="Mapa" component={MapScreen} />}
       <Tab.Screen name="Carrinho" component={CartScreen} />
       <Tab.Screen name="Opções" component={SettingsScreen} />
     </Tab.Navigator>
@@ -102,15 +143,65 @@ const tabConfigs: Record<string, Record<string, { Icon: any; Label: any; labelW:
  */
 function CustomTabBar({ state, navigation }: any) {
   const { isDarkMode } = useTheme();
+  const [tabPositions, setTabPositions] = React.useState<Record<number, { x: number; width: number }>>({});
+  const translateX = React.useRef(new Animated.Value(0)).current;
+  const opacityAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (tabPositions[state.index]) {
+      const { x, width } = tabPositions[state.index];
+      const targetX = x + (width - 51) / 2;
+      
+      Animated.parallel([
+        Animated.spring(translateX, {
+          toValue: targetX,
+          tension: 60,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [state.index, tabPositions]);
+
+  const slidingBgStyle = [
+    styles.iconBg,
+    {
+      position: 'absolute' as const,
+      left: 0,
+      width: 51,
+      height: 41,
+      borderRadius: 20, // Perfect capsule rounded corner rx="20"
+      transform: [{ translateX }],
+      opacity: opacityAnim,
+      top: 12, // Center vertically aligned with the 32x32 icon (top: 12 to not overlap text below)
+    },
+    isDarkMode
+      ? { backgroundColor: '#FFFFFF' }
+      : { backgroundColor: '#E3DAD9', borderWidth: 0 }
+  ];
 
   return (
     <View style={styles.tabBarOuter}>
-      {/* Barra Central (#E3E4EB, rx=30) */}
       <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
+        <Animated.View style={slidingBgStyle} />
+
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const activeTab = state.routes[state.index].name;
           const config = (tabConfigs[activeTab] || tabConfigs.Menu)[route.name];
+          if (!config) return null;
+
           const { Icon, Label, labelW, labelH } = config;
 
           const onPress = () => {
@@ -126,16 +217,8 @@ function CustomTabBar({ state, navigation }: any) {
 
           const iconColor = isDarkMode ? (isFocused ? '#FFD700' : '#FFFFFF') : undefined;
 
-          const activeBgStyle = isFocused
-            ? (isDarkMode
-                ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
-                : { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
-              )
-            : { width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const };
-
           return (
             <React.Fragment key={route.name}>
-              {/* Separador: 1x49, #8A7268 (antes de cada tab exceto primeiro) */}
               {index > 0 && (
                 <View 
                   style={[
@@ -149,9 +232,15 @@ function CustomTabBar({ state, navigation }: any) {
                 style={styles.tabItem}
                 onPress={onPress}
                 activeOpacity={0.7}
+                onLayout={(e) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  setTabPositions(prev => ({
+                    ...prev,
+                    [index]: { x, width }
+                  }));
+                }}
               >
-                {/* Fundo do ícone (51x41, rx=15, #E3DAD9 com borda #8A7268 quando ativo no modo claro, ou #FFFFFF sem borda no tema escuro) */}
-                <View style={activeBgStyle}>
+                <View style={styles.iconBg}>
                   <Icon 
                     width={32} 
                     height={32} 
@@ -159,7 +248,6 @@ function CustomTabBar({ state, navigation }: any) {
                     stroke={iconColor} 
                   />
                 </View>
-                {/* Label SVG */}
                 <Label 
                   width={labelW} 
                   height={labelH} 
@@ -213,16 +301,8 @@ const styles = StyleSheet.create({
   iconBg: {
     width: 51,
     height: 41,
-    borderRadius: 15,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // Fundo ativo: #E3DAD9 com borda #8A7268 (somente quando focado no modo claro)
-  iconBgActive: {
-    backgroundColor: '#E3DAD9',
-    borderWidth: 1.5,
-    borderColor: '#8A7268',
-    borderRadius: 15,
-    overflow: 'hidden',
   },
 });

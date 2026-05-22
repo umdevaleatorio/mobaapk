@@ -229,10 +229,26 @@ export default function CartScreen() {
     ]);
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       Alert.alert('Carrinho vazio', 'Adicione produtos antes de prosseguir.');
       return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_active')
+        .maybeSingle();
+
+      if (data && !error && data.delivery_active === false) {
+        Alert.alert(
+          'Aviso',
+          'Não é possível prosseguir com a compra. O frete encontra-se inativo no momento.'
+        );
+        return;
+      }
+    } catch (e) {
+      console.log('Error checking delivery status during checkout:', e);
     }
     navigation.navigate('PaymentScreen');
   };

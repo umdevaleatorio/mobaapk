@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
   View,
@@ -46,6 +46,20 @@ export default function ProductCreateScreen() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setSearchText('');
+      setActiveCategory(null);
+      setPhotoUri(null);
+      setPhotoBase64(null);
+      setName('');
+      setDescription('');
+      setPrice('');
+      setQuantity('');
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleSelectPhoto = () => {
     setShowImagePickerOptions(true);
@@ -136,7 +150,14 @@ export default function ProductCreateScreen() {
       <StatusBar backgroundColor={colors.headerBackground} barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header with search bar */}
-      <AdminHeader title="registrar_produto" searchValue={searchText} onSearchChange={setSearchText} />
+      <AdminHeader 
+        title="registrar_produto" 
+        searchValue={searchText} 
+        onSearchChange={(text) => {
+          setSearchText(text);
+          navigation.navigate('Gerenciar', { searchText: text });
+        }} 
+      />
 
       {/* Filter Bar */}
       <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
@@ -176,7 +197,8 @@ export default function ProductCreateScreen() {
                 <TouchableOpacity
                   key={category}
                   onPress={() => {
-                    setActiveCategory(activeCategory === category ? null : category);
+                    setActiveCategory(category);
+                    navigation.navigate('Gerenciar', { categories: [category] });
                   }}
                   activeOpacity={0.7}
                   style={[

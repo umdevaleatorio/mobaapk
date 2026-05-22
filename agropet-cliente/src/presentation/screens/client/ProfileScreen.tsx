@@ -36,6 +36,19 @@ import MapaLabel8 from '../../assets/tela11/barra de baixo/Mapa.svg';
 import CarrinhoLabel8 from '../../assets/tela11/barra de baixo/Carrinho.svg';
 import OpcoesLabel8 from '../../assets/tela11/barra de baixo/Opções.svg';
 
+const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const d = R * c; // Distance in km
+  return d;
+};
+
 export default function ProfileScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
@@ -64,6 +77,7 @@ export default function ProfileScreen() {
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showImagePickerOptions, setShowImagePickerOptions] = useState(false);
+  const [showViewPhotoModal, setShowViewPhotoModal] = useState(false);
 
   const [rua, setRua] = useState('');
   const [bairro, setBairro] = useState('');
@@ -313,11 +327,48 @@ export default function ProfileScreen() {
     }
 
     try {
+      setIsSearchingAddress(true);
+
+      // Check if delivery is active first
+      const { data: settings, error: settingsError } = await supabase
+        .from('store_settings')
+        .select('delivery_active')
+        .maybeSingle();
+
+      if (settings && !settingsError && settings.delivery_active === false) {
+        if (user) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              rua,
+              bairro,
+              cep,
+              numero,
+              lat: null,
+              lng: null,
+              location_confirmed: false
+            })
+            .eq('id', user.id);
+
+          if (updateError) {
+            Alert.alert('Erro', 'Não foi possível salvar o endereço.');
+          } else {
+            setLat(null);
+            setLng(null);
+            setLocationConfirmed(false);
+            Alert.alert(
+              'Sucesso',
+              'Suas informações foram registradas com sucesso! Porém não é possível registrar sua localização no mapa pois o frete encontra-se inativo no momento. Quando voltarmos da manutenção do veículo, você já terá todas as funcionalidades do mapa ativo. Não se preocupe! Voltaremos em breve!'
+            );
+          }
+        }
+        return;
+      }
+
       let currentLat = lat;
       let currentLng = lng;
 
       // Se o usuário digitou ou alterou manualmente, vamos buscar no Nominatim para maior precisão
-      setIsSearchingAddress(true);
       const query = `${rua}, ${numero}, ${bairro}, Lambari, Minas Gerais, Brasil`;
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=br&addressdetails=1`,
@@ -386,6 +437,47 @@ export default function ProfileScreen() {
 
   const saveAddressToDB = async (resolvedLat: number | null, resolvedLng: number | null, confirmLocation: boolean) => {
     if (!user) return;
+    
+    if (resolvedLat && resolvedLng && confirmLocation) {
+      let storeLat = -21.9765;
+      let storeLng = -45.3469;
+      let maxRadius = 17;
+
+      try {
+        const { data: storeLoc, error: storeLocError } = await supabase
+          .from('agropet_store_location')
+          .select('latitude, longitude')
+          .eq('id', 1)
+          .single();
+        if (storeLoc && !storeLocError) {
+          storeLat = storeLoc.latitude;
+          storeLng = storeLoc.longitude;
+        }
+      } catch (e) {
+        console.log('Error loading store location in save:', e);
+      }
+
+      try {
+        const { data: settings, error: settingsError } = await supabase
+          .from('store_settings')
+          .select('delivery_radius_km')
+          .maybeSingle();
+        if (settings && !settingsError && settings.delivery_radius_km !== null) {
+          maxRadius = settings.delivery_radius_km;
+        }
+      } catch (e) {
+        console.log('Error loading settings in save:', e);
+      }
+
+      const distance = getDistanceKm(storeLat, storeLng, resolvedLat, resolvedLng);
+      if (distance > maxRadius) {
+        Alert.alert(
+          'Fora da Área de Entrega',
+          'Infelizmente nossos serviços de frete não alcançam essa área. Obrigado pela compreensão.'
+        );
+        return;
+      }
+    }
     
     const updateData: any = {
       rua,
@@ -1092,6 +1184,21 @@ export default function ProfileScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Alterar Foto de Perfil</Text>
             
+            {photoUri && (
+              <>
+                <TouchableOpacity 
+                  style={styles.modalOption} 
+                  onPress={() => {
+                    setShowImagePickerOptions(false);
+                    setShowViewPhotoModal(true);
+                  }}
+                >
+                  <Text style={styles.modalOptionText}>Ver foto</Text>
+                </TouchableOpacity>
+                <View style={styles.modalSeparator} />
+              </>
+            )}
+            
             <TouchableOpacity style={styles.modalOption} onPress={openCamera}>
               <Text style={styles.modalOptionText}>Tirar Foto</Text>
             </TouchableOpacity>
@@ -1126,6 +1233,36 @@ export default function ProfileScreen() {
             >
               <Text style={[styles.modalOptionText, styles.modalCancelText]}>Cancelar</Text>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Premium View Photo Modal */}
+      <Modal
+        visible={showViewPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowViewPhotoModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.viewPhotoOverlay}
+          activeOpacity={1}
+          onPress={() => setShowViewPhotoModal(false)}
+        >
+          <View style={styles.viewPhotoContainer}>
+            <TouchableOpacity
+              style={styles.closeViewPhotoBtn}
+              onPress={() => setShowViewPhotoModal(false)}
+            >
+              <Feather name="x" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            {photoUri && (
+              <Image
+                source={{ uri: photoUri }}
+                style={styles.viewPhotoSquare}
+                resizeMode="cover"
+              />
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1500,5 +1637,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 15,
+  },
+  viewPhotoOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewPhotoContainer: {
+    width: '80%',
+    aspectRatio: 1,
+    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  viewPhotoSquare: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  closeViewPhotoBtn: {
+    position: 'absolute',
+    top: -45,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 8,
   },
 });

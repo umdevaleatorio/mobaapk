@@ -11,7 +11,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, Circle as MapCircle } from 'react-native-maps';
 import Svg, { Circle, Line, Path, Defs, LinearGradient, Stop, Rect, G, Ellipse } from 'react-native-svg';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
@@ -306,8 +306,29 @@ export default function AdminMapScreen() {
   const trackingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideCarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [deliveryRadius, setDeliveryRadius] = useState(17);
+
+  const fetchRadius = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_radius_km')
+        .maybeSingle();
+      
+      if (data && !error && data.delivery_radius_km !== null) {
+        setDeliveryRadius(data.delivery_radius_km);
+      } else {
+        setDeliveryRadius(17);
+      }
+    } catch (e) {
+      console.log('Error loading radius from DB:', e);
+      setDeliveryRadius(17);
+    }
+  };
+
   useEffect(() => {
     fetchStoreLocation();
+    fetchRadius();
   }, []);
 
   const fetchRouteAndStartTracking = async (storeLoc: any, clientLoc: any) => {
@@ -492,28 +513,55 @@ export default function AdminMapScreen() {
   // Listener para capturar quando a tela é focada com parâmetros de rastreamento
   useEffect(() => {
     const unsubscribeFocus = navigation.addListener('focus', () => {
-      const params = route.params;
-      if (params?.clientLocation) {
-        const clientLoc = params.clientLocation;
-        setTrackedClient(clientLoc);
-        
-        // Anima o mapa para focar na casa do cliente
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: clientLoc.latitude,
-            longitude: clientLoc.longitude,
-            latitudeDelta: 0.008,
-            longitudeDelta: 0.008,
-          }, 1000);
+      fetchRadius();
+      
+      const loadAndTrack = async () => {
+        let currentStoreLoc = storeLocation;
+        try {
+          const { data, error } = await supabase
+            .from('agropet_store_location')
+            .select('latitude, longitude')
+            .eq('id', 1)
+            .single();
+          if (data && !error) {
+            currentStoreLoc = {
+              ...DEFAULT_STORE_LOCATION,
+              latitude: data.latitude,
+              longitude: data.longitude,
+            };
+            setStoreLocation(currentStoreLoc);
+          }
+        } catch (e) {
+          console.log('Error loading store location on focus:', e);
         }
 
-        // Carrega a rota até a casa do cliente e inicia rastreio
-        fetchRouteAndStartTracking(storeLocation, clientLoc);
-      }
+        const params = route.params;
+        if (params?.clientLocation) {
+          const clientLoc = params.clientLocation;
+          setTrackedClient(clientLoc);
+          
+          // Anima o mapa para focar na casa do cliente
+          if (mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: clientLoc.latitude,
+              longitude: clientLoc.longitude,
+              latitudeDelta: 0.008,
+              longitudeDelta: 0.008,
+            }, 1000);
+          }
+
+          // Carrega a rota até a casa do cliente e inicia rastreio
+          fetchRouteAndStartTracking(currentStoreLoc, clientLoc);
+        } else {
+          setTrackedClient(null);
+        }
+      };
+
+      loadAndTrack();
     });
 
     return unsubscribeFocus;
-  }, [navigation, route.params, storeLocation]);
+  }, [navigation, route.params]);
 
   // Listener para limpar parâmetros e estado quando perde o foco (blur)
   useEffect(() => {
@@ -720,6 +768,20 @@ export default function AdminMapScreen() {
             title="Agropet Lambari"
             description="Av. João Bráulio Júnior, 290 - Volta do Lago, Lambari - MG, 37480-000"
           />
+
+          {/* Círculo do Raio de Alcance de Entrega */}
+          {!trackedClient && (
+            <MapCircle
+              center={{
+                latitude: storeLocation.latitude,
+                longitude: storeLocation.longitude,
+              }}
+              radius={deliveryRadius * 1000}
+              fillColor="rgba(33, 150, 243, 0.15)"
+              strokeColor="rgba(21, 101, 192, 0.6)"
+              strokeWidth={2}
+            />
+          )}
           
           {/* Pin do Cliente Sendo Rastreado */}
           {trackedClient && (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -134,19 +134,78 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   if (focusedOptions.tabBarVisible === false) return null;
 
   const { isDarkMode } = useTheme();
+  const [tabPositions, setTabPositions] = React.useState<Record<number, { x: number; width: number }>>({});
+  const translateX = React.useRef(new Animated.Value(0)).current;
+  const opacityAnim = React.useRef(new Animated.Value(0)).current;
+
+  const activeTab = state.routes[state.index].name;
+
+  const getHighlightedRouteIndex = () => {
+    if (activeTab === 'AdminProfile') return -1;
+    if (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen') {
+      return state.routes.findIndex((r: any) => r.name === 'Gerenciar');
+    }
+    return state.index;
+  };
+
+  const highlightedIndex = getHighlightedRouteIndex();
+
+  React.useEffect(() => {
+    if (highlightedIndex !== -1 && tabPositions[highlightedIndex]) {
+      const { x, width } = tabPositions[highlightedIndex];
+      const targetX = x + (width - 51) / 2;
+      
+      Animated.parallel([
+        Animated.spring(translateX, {
+          toValue: targetX,
+          tension: 60,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [highlightedIndex, tabPositions]);
+
+  const slidingBgStyle = [
+    styles.iconBg,
+    {
+      position: 'absolute' as const,
+      left: 0,
+      width: 51,
+      height: 41,
+      borderRadius: 20,
+      transform: [{ translateX }],
+      opacity: opacityAnim,
+      top: 12,
+    },
+    isDarkMode
+      ? { backgroundColor: '#FFFFFF' }
+      : { backgroundColor: '#E3DAD9', borderWidth: 0 }
+  ];
 
   return (
     <View style={styles.tabBarOuter}>
       <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
+        <Animated.View style={slidingBgStyle} />
+
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
-          const activeTab = state.routes[state.index].name;
           
           let isTabActive = isFocused;
           if (route.name === 'Gerenciar' && (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen')) {
             isTabActive = true;
           }
-          // AdminProfile: nenhuma aba fica selecionada
           if (activeTab === 'AdminProfile') {
             isTabActive = false;
           }
@@ -162,14 +221,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           if (!config) return null;
 
           const { Icon, Label, labelW, labelH } = config;
-
-          const activeBgStyle = isTabActive
-            ? (isDarkMode
-                ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
-                : { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
-              )
-            : { width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const };
-
           const iconColor = isDarkMode ? (isTabActive ? '#FFD700' : '#FFFFFF') : undefined;
 
           return (
@@ -186,8 +237,15 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 onPress={onPress}
                 style={styles.tabItem}
                 activeOpacity={0.7}
+                onLayout={(e) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  setTabPositions(prev => ({
+                    ...prev,
+                    [index]: { x, width }
+                  }));
+                }}
               >
-                <View style={activeBgStyle}>
+                <View style={styles.iconBg}>
                   <Icon 
                     width={32} 
                     height={32} 
@@ -240,15 +298,8 @@ const styles = StyleSheet.create({
   iconBg: {
     width: 51,
     height: 41,
-    borderRadius: 15,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconBgActive: {
-    backgroundColor: '#E3DAD9',
-    borderWidth: 1.5,
-    borderColor: '#8A7268',
-    borderRadius: 15,
-    overflow: 'hidden',
   },
 });
