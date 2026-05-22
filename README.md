@@ -203,9 +203,12 @@ Caso queira acompanhar minha jornada de desenvolvimento de perto, ver novidades 
 
 <div align="center">
 
-<!-- A beautiful, animated-feeling modern social link utilizing GitHub badges style -->
+<!-- Modern social links utilizing GitHub badges style -->
+<a href="https://wa.me/5535998906096" target="_blank">
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Caio Magalhães WhatsApp" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-right: 10px;" />
+</a>
 <a href="https://www.instagram.com/caio.json/" target="_blank">
-  <img src="https://img.shields.io/badge/Instagram-caio.json-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Caio Magalhães Instagram" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transform: scale(1); transition: transform 0.3s ease;" />
+  <img src="https://img.shields.io/badge/Instagram-caio.json-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Caio Magalhães Instagram" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
 </a>
 
 </div>
@@ -213,7 +216,7 @@ Caso queira acompanhar minha jornada de desenvolvimento de perto, ver novidades 
 ---
 
 <div align="center">
-  <sub>© 2026 Caio Magalhães. Todos os direitos reservados. Projetado e construído com 💻, 🧠 e ☕ em Lambari, MG.</sub>
+  <sub>© 2026 Caio Magalhães. Todos os direitos reservados. Projetado e construído com 💻, 🧠 e ☕ em Varginha, MG.</sub>
 </div>
 
 <img style="width:100%" src="https://capsule-render.vercel.app/api?type=waving&color=E25822&section=footer" />
