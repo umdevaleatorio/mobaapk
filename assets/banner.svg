@@ -114,18 +114,11 @@
   </g>
 
   <!-- Text Header Section -->
-  <g transform="translate(65, 75)">
+  <g transform="translate(65, 105)">
     <!-- Badge -->
     <text class="badge" x="0" y="0">PORTFÓLIO DE ENGENHARIA MOBILE</text>
     
     <!-- Main Animated Title -->
-    <text class="title" x="0" y="42">AgroPet Lambari</text>
-    
-    <!-- Typing/Fading Subtitle Text -->
-    <g class="subtitle-box" transform="translate(0, 75)">
-      <!-- Background plate for text contrast -->
-      <rect width="525" height="32" rx="6" fill="#161B22" stroke="#21262D" stroke-width="1" />
-      <text class="subtitle-text" x="15" y="21">Seja muito bem-vindo ao meu projeto AgroPet Lambari, Leitor! 👋</text>
-    </g>
+    <text class="title" x="0" y="45">AgroPet Lambari</text>
   </g>
 </svg>
