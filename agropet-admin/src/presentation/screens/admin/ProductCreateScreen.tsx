@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   View,
   Text,
@@ -17,16 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../data/datasources/supabase/client';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
-
-// Filter SVGs
-import FiltroIcon from '../../assets/tela7/filtro/Filtro Icon.svg';
-import FiltroText from '../../assets/tela7/filtro/Filtro.svg';
-import CategoriaText from '../../assets/tela7/filtro/Categoria_.svg';
-import RacaoText from '../../assets/tela7/filtro/Ração.svg';
-import PescaText from '../../assets/tela7/filtro/Pesca.svg';
-import SementesText from '../../assets/tela7/filtro/Sementes.svg';
-import AduboText from '../../assets/tela7/filtro/Adubo ....svg';
-import SeparadorFiltro from '../../assets/tela7/filtro/Separador.svg';
+import { Feather } from '@expo/vector-icons';
 
 // Form SVGs
 import NoPhotoSvg from '../../assets/tela8/No photo.svg';
@@ -41,6 +33,7 @@ import QuantidadeSvg from '../../assets/tela8/formulario/quantidade/Quantidade_ 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ProductCreateScreen() {
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [searchText, setSearchText] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -108,6 +101,11 @@ export default function ProductCreateScreen() {
       return;
     }
 
+    if (!activeCategory) {
+      Alert.alert('Atenção', 'Por favor, selecione uma categoria.');
+      return;
+    }
+
     const { error } = await supabase.from('products').insert([
       {
         name,
@@ -116,6 +114,7 @@ export default function ProductCreateScreen() {
         stock: parseInt(quantity, 10),
         active: true, // Default to active as requested
         image_url: photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null,
+        category_id: activeCategory,
       }
     ]);
 
@@ -129,61 +128,97 @@ export default function ProductCreateScreen() {
     }
   };
 
+  const labelColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+  const sepColor = isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268';
+
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header with search bar */}
       <AdminHeader title="registrar_produto" searchValue={searchText} onSearchChange={setSearchText} />
 
-      {/* Filter Bar - Same as Tela 7 */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterBar}>
-          <FiltroIcon width={14} height={14} />
-          <FiltroText width={28} height={11} />
-          <SeparadorFiltro width={1} height={22} />
-          <CategoriaText width={58} height={13} />
-          <TouchableOpacity
-            style={[styles.filterTag, activeCategory === 'Ração' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Ração' ? null : 'Ração')}
+      {/* Filter Bar */}
+      <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+        <View style={[styles.filterPill, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
+          {/* FiltroIcon + texto */}
+          <View style={styles.filterBtn}>
+            <Feather name="sliders" size={12} color={labelColor} />
+            <Text style={[styles.filterBtnText, { color: labelColor }]}>Filtro</Text>
+          </View>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          <Text style={[styles.categoryLabelText, { color: labelColor }]}>Categoria</Text>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          {/* Tags — com destaque no ativo */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesRow}
           >
-            <RacaoText width={36} height={13} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity
-            style={[styles.filterTag, activeCategory === 'Pesca' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Pesca' ? null : 'Pesca')}
-          >
-            <PescaText width={35} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity
-            style={[styles.filterTag, activeCategory === 'Sementes' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Sementes' ? null : 'Sementes')}
-          >
-            <SementesText width={56} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity
-            style={[styles.filterTag, activeCategory === 'Adubo' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Adubo' ? null : 'Adubo')}
-          >
-            <AduboText width={62} height={11} />
-          </TouchableOpacity>
+            {['Ração', 'Pesca', 'Sementes', 'Adubo'].map((category) => {
+              const isSelected = activeCategory === category;
+              
+              let tagBg = 'transparent';
+              if (isSelected) {
+                tagBg = '#5B86E5';
+              }
+
+              let tagTextColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+              if (isSelected) {
+                tagTextColor = '#FFFFFF';
+              }
+
+              return (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => {
+                    setActiveCategory(activeCategory === category ? null : category);
+                  }}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.tagItem,
+                    { backgroundColor: tagBg }
+                  ]}
+                >
+                  <Text 
+                    style={[
+                      styles.tagText, 
+                      { 
+                        color: tagTextColor,
+                        fontWeight: isSelected ? 'bold' : 'normal'
+                      }
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.formCard}>
+        <View style={[styles.formCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
           {/* Photo Section */}
           <View style={styles.photoSection}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.productPhoto} />
             ) : (
-              <NoPhotoSvg width={310} height={220} />
+              <NoPhotoSvg width={310} height={220} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             )}
             <TouchableOpacity style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
-              <EnviarFotoSvg width={140} height={24} />
+              {isDarkMode ? (
+                <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', minWidth: 140 }}>
+                  Enviar foto
+                </Text>
+              ) : (
+                <EnviarFotoSvg width={140} height={24} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -192,10 +227,10 @@ export default function ProductCreateScreen() {
             {/* Nome */}
             <View style={styles.inputContainer}>
               {name.length === 0 && (
-                <DigiteNomeSvg width={200} height={14} style={styles.placeholderSvg} />
+                <DigiteNomeSvg width={200} height={14} style={styles.placeholderSvg} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
               )}
               <TextInput
-                style={styles.inputField}
+                style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                 value={name}
                 onChangeText={setName}
               />
@@ -204,10 +239,10 @@ export default function ProductCreateScreen() {
             {/* Descrição */}
             <View style={styles.inputContainer}>
               {description.length === 0 && (
-                <DigiteDescricaoSvg width={230} height={14} style={[styles.placeholderSvg, { top: 15 }]} />
+                <DigiteDescricaoSvg width={230} height={14} style={[styles.placeholderSvg, { top: 15 }]} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
               )}
               <TextInput
-                style={[styles.inputField, styles.textArea]}
+                style={[styles.inputField, styles.textArea, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -221,13 +256,13 @@ export default function ProductCreateScreen() {
               <View style={styles.smallInputWrapper}>
                 <View style={styles.inputContainer}>
                   {price.length === 0 && (
-                    <PrecoSvg width={70} height={14} style={styles.placeholderSvg} />
+                    <PrecoSvg width={70} height={14} style={styles.placeholderSvg} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
                   )}
                   {price.length > 0 && (
-                    <Text style={styles.currencyPrefix}>R$</Text>
+                    <Text style={[styles.currencyPrefix, { color: isDarkMode ? '#919191' : colors.textDark }]}>R$</Text>
                   )}
                   <TextInput
-                    style={[styles.inputField, price.length > 0 && { paddingLeft: 42 }]}
+                    style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }, price.length > 0 && { paddingLeft: 42 }]}
                     value={price}
                     onChangeText={setPrice}
                     keyboardType="numeric"
@@ -237,10 +272,10 @@ export default function ProductCreateScreen() {
               <View style={styles.smallInputWrapper}>
                 <View style={styles.inputContainer}>
                   {quantity.length === 0 && (
-                    <QuantidadeSvg width={100} height={14} style={styles.placeholderSvg} />
+                    <QuantidadeSvg width={100} height={14} style={styles.placeholderSvg} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
                   )}
                   <TextInput
-                    style={styles.inputField}
+                    style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                     value={quantity}
                     onChangeText={setQuantity}
                     keyboardType="numeric"
@@ -255,7 +290,7 @@ export default function ProductCreateScreen() {
               <View style={styles.smallInputWrapper}>
                 <TouchableOpacity style={styles.registerBtn} onPress={handleRegister}>
                   <View style={[StyleSheet.absoluteFill, { backgroundColor: '#339914', borderRadius: 10 }]} />
-                  <RegistrarSvg width="100%" height={20} style={{ zIndex: 1 }} />
+                  <RegistrarSvg width="100%" height={20} style={{ zIndex: 1 }} fill={isDarkMode ? '#FFFFFF' : undefined} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -276,20 +311,20 @@ export default function ProductCreateScreen() {
           activeOpacity={1} 
           onPress={() => setShowImagePickerOptions(false)}
         >
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Adicionar Foto do Produto</Text>
+          <View style={[styles.modalContainer, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+            <Text style={[styles.modalTitle, { color: colors.textDark }]}>Adicionar Foto do Produto</Text>
             
             <TouchableOpacity style={styles.modalOption} onPress={openCamera}>
-              <Text style={styles.modalOptionText}>Tirar Foto</Text>
+              <Text style={[styles.modalOptionText, { color: colors.textDark }]}>Tirar Foto</Text>
             </TouchableOpacity>
             
-            <View style={styles.modalSeparator} />
+            <View style={[styles.modalSeparator, { backgroundColor: isDarkMode ? '#333333' : '#E3E4EB' }]} />
             
             <TouchableOpacity style={styles.modalOption} onPress={openGallery}>
-              <Text style={styles.modalOptionText}>Escolher da Galeria</Text>
+              <Text style={[styles.modalOptionText, { color: colors.textDark }]}>Escolher da Galeria</Text>
             </TouchableOpacity>
             
-            <View style={styles.modalSeparator} />
+            <View style={[styles.modalSeparator, { backgroundColor: isDarkMode ? '#333333' : '#E3E4EB' }]} />
             
             <TouchableOpacity 
               style={[styles.modalOption, { marginTop: 10 }]} 
@@ -318,23 +353,48 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
   },
-  filterBar: {
+  filterPill: {
+    flexDirection: 'row',
+    borderRadius: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 10,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3E4EB',
-    borderRadius: 25,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    gap: 6,
+    gap: 4,
   },
-  filterTag: {
-    paddingHorizontal: 3,
-    paddingVertical: 3,
-    borderRadius: 4,
+  filterSep: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#8A7268',
   },
-  filterTagActive: {
-    backgroundColor: 'rgba(249, 125, 1, 0.2)',
-    borderRadius: 6,
+  filterBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  categoryLabelText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 10,
+  },
+  tagItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 12,
   },
   // ===== FORM =====
   scrollContent: {

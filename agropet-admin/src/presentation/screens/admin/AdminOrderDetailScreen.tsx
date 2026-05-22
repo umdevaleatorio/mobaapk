@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import AdminHeader from '../../components/AdminHeader';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AdminOrderDetailScreen({ route, navigation }: any) {
   const { order } = route.params;
+  const { colors, isDarkMode } = useTheme();
 
   const orderItems = order.order_items || [];
   const orderTotal = order.total || 0;
@@ -74,18 +76,18 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
   ].filter(Boolean).join(', ');
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* ========== HEADER ========== */}
       <AdminHeader title="detalhes_pedido" />
 
       {/* ========== SUB-HEADER: Nº do Pedido ========== */}
-      <View style={styles.subHeader}>
-        <Text style={styles.subHeaderLabel}>
+      <View style={[styles.subHeader, { backgroundColor: isDarkMode ? '#18181C' : '#E8E9F0' }]}>
+        <Text style={[styles.subHeaderLabel, { color: colors.textGray }]}>
           Nº do Pedido
         </Text>
-        <Text style={styles.subHeaderValue}>
+        <Text style={[styles.subHeaderValue, { color: colors.textDark, fontWeight: 'bold' }]}>
           #{order.id.slice(0, 8).toUpperCase()}
         </Text>
       </View>
@@ -95,14 +97,14 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionListTitle}>
+        <Text style={[styles.sectionListTitle, { color: colors.textDark, fontWeight: 'bold' }]}>
           Produtos do Pedido
         </Text>
 
         {orderItems.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Feather name="package" size={48} color="#CCC" />
-            <Text style={styles.emptyText}>
+            <Feather name="package" size={48} color={isDarkMode ? '#555' : '#CCC'} />
+            <Text style={[styles.emptyText, { color: colors.textGray }]}>
               Nenhum produto encontrado neste pedido.
             </Text>
           </View>
@@ -115,10 +117,10 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
             return (
               <View
                 key={item.product_id || index}
-                style={styles.productCard}
+                style={[styles.productCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}
               >
                 {/* Foto do Produto */}
-                <View style={styles.photoContainer}>
+                <View style={[styles.photoContainer, { backgroundColor: isDarkMode ? '#18181C' : '#FFFFFF' }]}>
                   {product.image_url ? (
                     <Image
                       source={{ uri: product.image_url }}
@@ -126,8 +128,8 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
                       resizeMode="cover"
                     />
                   ) : (
-                    <View style={styles.placeholderImage}>
-                      <Feather name="image" size={24} color="#BBB" />
+                    <View style={[styles.placeholderImage, { backgroundColor: isDarkMode ? '#2E2E38' : '#EAEAEA' }]}>
+                      <Feather name="image" size={24} color={isDarkMode ? '#666' : '#BBB'} />
                     </View>
                   )}
                 </View>
@@ -136,7 +138,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
                 <View style={styles.infoContainer}>
                   {/* Nome */}
                   <Text
-                    style={styles.productName}
+                    style={[styles.productName, { color: colors.textDark, fontWeight: 'bold' }]}
                     numberOfLines={2}
                   >
                     {product.name || 'Produto'}
@@ -144,12 +146,12 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
 
                   {/* Quantidade e Preço Unitário */}
                   <View style={styles.priceRow}>
-                    <View style={styles.qtyBadge}>
-                      <Text style={styles.qtyText}>
+                    <View style={[styles.qtyBadge, { backgroundColor: isDarkMode ? '#1E1E24' : '#D4D5DC' }]}>
+                      <Text style={[styles.qtyText, { color: colors.textDark }]}>
                         Qtd: {quantity}
                       </Text>
                     </View>
-                    <Text style={styles.unitPrice}>
+                    <Text style={[styles.unitPrice, { color: colors.textGray }]}>
                       R$ {unitPrice.toFixed(2)} un.
                     </Text>
                   </View>
@@ -161,14 +163,14 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
 
         {/* ========== DATA DA COMPRA ========== */}
         <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>
+          <Text style={[styles.dateText, { color: colors.textGray }]}>
             Data da compra: {formattedDate}
           </Text>
         </View>
 
         {/* ========== STATUS CARD ========== */}
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>
+        <View style={[styles.statusCard, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.statusTitle, { color: colors.textDark, fontWeight: 'bold' }]}>
             Situação da entrega
           </Text>
 
@@ -189,9 +191,10 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
             {/* Circle */}
             <View style={[
               styles.circleOuter, 
-              isRightAligned ? { right: -5 } : { left: -5 }
+              isRightAligned ? { right: -5 } : { left: -5 },
+              { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }
             ]}>
-              <View style={[styles.circleInner, { borderColor: textColor }]} />
+              <View style={[styles.circleInner, { borderColor: textColor, backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]} />
             </View>
           </View>
 
@@ -204,37 +207,37 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
         </View>
 
         {/* ========== DADOS DO CLIENTE ========== */}
-        <View style={styles.clientCard}>
-          <Text style={styles.clientCardTitle}>Dados do Cliente</Text>
+        <View style={[styles.clientCard, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.clientCardTitle, { color: colors.textDark, fontWeight: 'bold' }]}>Dados do Cliente</Text>
           
           <View style={styles.clientRow}>
-            <Feather name="user" size={16} color="#767676" />
-            <Text style={styles.clientLabel}>Nome:</Text>
-            <Text style={styles.clientValue} numberOfLines={1}>
+            <Feather name="user" size={16} color={colors.textGray} />
+            <Text style={[styles.clientLabel, { color: colors.textGray }]}>Nome:</Text>
+            <Text style={[styles.clientValue, { color: colors.textDark, fontWeight: 'bold' }]} numberOfLines={1}>
               {userData.name || 'Não informado'}
             </Text>
           </View>
 
           <View style={styles.clientRow}>
-            <Feather name="phone" size={16} color="#767676" />
-            <Text style={styles.clientLabel}>Telefone:</Text>
-            <Text style={styles.clientValue} numberOfLines={1}>
+            <Feather name="phone" size={16} color={colors.textGray} />
+            <Text style={[styles.clientLabel, { color: colors.textGray }]}>Telefone:</Text>
+            <Text style={[styles.clientValue, { color: colors.textDark, fontWeight: 'bold' }]} numberOfLines={1}>
               {userData.phone || 'Não informado'}
             </Text>
           </View>
 
           <View style={styles.clientRow}>
-            <Feather name="map-pin" size={16} color="#767676" />
-            <Text style={styles.clientLabel}>Endereço:</Text>
-            <Text style={styles.clientValue} numberOfLines={2}>
+            <Feather name="map-pin" size={16} color={colors.textGray} />
+            <Text style={[styles.clientLabel, { color: colors.textGray }]}>Endereço:</Text>
+            <Text style={[styles.clientValue, { color: colors.textDark, fontWeight: 'bold' }]} numberOfLines={2}>
               {clientAddress || 'Não informado'}
             </Text>
           </View>
         </View>
 
         {/* ========== TOTAL DA VENDA ========== */}
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Total de vendas</Text>
+        <View style={[styles.totalCard, { backgroundColor: isDarkMode ? '#1E1E24' : '#FAFAFA' }]}>
+          <Text style={[styles.totalLabel, { color: colors.textDark, fontWeight: 'bold' }]}>Total de vendas</Text>
           <Text style={styles.totalValue}>
             R$ {Number(orderTotal).toFixed(2).replace('.', ',')}
           </Text>
@@ -246,8 +249,8 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="caret-back" size={16} color="#1C2434" style={{ marginRight: 4 }} />
-          <Text style={styles.voltarText}>Voltar</Text>
+          <Ionicons name="caret-back" size={16} color={colors.textDark} style={{ marginRight: 4 }} />
+          <Text style={[styles.voltarText, { color: colors.textDark, fontWeight: 'bold' }]}>Voltar</Text>
         </TouchableOpacity>
 
       </ScrollView>

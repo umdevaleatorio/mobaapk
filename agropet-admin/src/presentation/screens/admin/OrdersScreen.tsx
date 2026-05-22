@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { supabase } from '../../../data/datasources/supabase/client';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function OrdersScreen({ navigation }: any) {
+  const { colors, isDarkMode } = useTheme();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,28 +41,28 @@ export default function OrdersScreen({ navigation }: any) {
     const orderDate = new Date(item.created_at).toLocaleString('pt-BR');
     
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.clientName}>{item.users?.name || 'Cliente Sem Nome'}</Text>
+          <Text style={[styles.clientName, { color: colors.textDark }]}>{item.users?.name || 'Cliente Sem Nome'}</Text>
           <Text style={styles.date}>{orderDate}</Text>
         </View>
 
-        <Text style={styles.email}>{item.users?.email}</Text>
+        <Text style={[styles.email, { color: isDarkMode ? '#A0A0A0' : '#666' }]}>{item.users?.email}</Text>
         
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#eee' }]} />
 
         {/* Lista de Rações / Itens Comprados */}
         {item.order_items.map((cartItem: any, index: number) => (
           <View key={index} style={styles.itemRow}>
-            <Text style={{ flex: 1, color: '#333' }}>{cartItem.quantity}x {cartItem.products?.name}</Text>
-            <Text style={{ fontWeight: 'bold' }}>R$ {((cartItem.quantity ?? 0) * (cartItem.unit_price ?? 0)).toFixed(2)}</Text>
+            <Text style={{ flex: 1, color: colors.textDark }}>{cartItem.quantity}x {cartItem.products?.name}</Text>
+            <Text style={{ fontWeight: 'bold', color: colors.textDark }}>R$ {((cartItem.quantity ?? 0) * (cartItem.unit_price ?? 0)).toFixed(2)}</Text>
           </View>
         ))}
 
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#eee' }]} />
 
         <View style={styles.footerRow}>
-          <Text style={styles.method}>PAGTO: {item.payment_method?.toUpperCase() || ''}</Text>
+          <Text style={[styles.method, { backgroundColor: isDarkMode ? '#1E1E24' : '#e2e6ef', color: colors.textDark }]}>PAGTO: {item.payment_method?.toUpperCase() || ''}</Text>
           <Text style={styles.totalText}>Total: R$ {(item.total ?? 0).toFixed(2)}</Text>
         </View>
       </View>
@@ -68,11 +70,11 @@ export default function OrdersScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.white }]}>
       {loading ? (
         <ActivityIndicator size="large" style={{ marginTop: 20 }} />
       ) : orders.length === 0 ? (
-        <Text style={styles.empty}>Nenhum pedido recebido ainda.</Text>
+        <Text style={[styles.empty, { color: isDarkMode ? '#A0A0A0' : 'gray' }]}>Nenhum pedido recebido ainda.</Text>
       ) : (
         <FlatList
           data={orders}

@@ -900,7 +900,7 @@ export default function ProfileScreen() {
 
       {/* ========== BARRA INFERIOR ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={[styles.tabBarInner, { backgroundColor: colors.cardBackground }]}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
             <View style={styles.iconBgInactive}>
               <HomeIcon8 width={32} height={32} />

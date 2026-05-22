@@ -25,16 +25,7 @@ import AdminHeader from '../../components/AdminHeader';
 import Colors from '../../theme/colors';
 import PhotoSvg from '../../assets/tela13/photo/Photo.svg';
 import PersonIcon13 from '../../assets/tela13/photo/Person Icon.svg';
-
-const useTheme = () => ({
-  colors: {
-    backgroundLight: '#F5F5F5',
-    headerBackground: '#1C2434',
-    textDark: '#1C2434',
-    cardBackground: '#E3E4EB'
-  },
-  isDarkMode: false
-});
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AdminProfileScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -660,7 +651,7 @@ export default function AdminProfileScreen() {
   };
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
       <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* ========== HEADER ========== */}

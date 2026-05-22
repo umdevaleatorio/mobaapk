@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import Svg, { Circle, Line, Path, Defs, LinearGradient, Stop, Rect, G, Ellipse } from 'react-native-svg';
 import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { AuthContext } from '../../contexts/AuthContext';
 import { CatalogHeader } from '../../components/CatalogHeader';
@@ -310,11 +311,16 @@ export default function MapScreen({ route }: any) {
   const trackingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideCarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Buscar localização da loja no Supabase ao abrir a tela
-  useEffect(() => {
-    fetchStoreLocation();
-    fetchClientLocation();
+  // Buscar localizações da loja e do cliente sempre que a tela receber foco
+  useFocusEffect(
+    useCallback(() => {
+      fetchStoreLocation();
+      fetchClientLocation();
+    }, [user])
+  );
 
+  // Ouvir mudanças em tempo real da localização da loja no Supabase ao abrir a tela
+  useEffect(() => {
     // Ouvir mudanças em tempo real (quando o Admin arrastar o pino)
     const subscription = supabase
       .channel('store_location_changes')
@@ -397,13 +403,40 @@ export default function MapScreen({ route }: any) {
         .single();
       
       if (data && !error && data.lat && data.lng) {
-        setClientLocation({ latitude: data.lat, longitude: data.lng });
-        if (data.location_confirmed) {
-          setLocationConfirmed(true);
+        const newClientLoc = { latitude: data.lat, longitude: data.lng };
+        setClientLocation(newClientLoc);
+        
+        const isConfirmed = !!data.location_confirmed;
+        setLocationConfirmed(isConfirmed);
+
+        // Se o endereço estiver confirmado e não estiver rastreando, enquadrar mapa
+        if (!trackingOrderId && mapRef.current) {
+          const markers = [
+            { latitude: storeLocation.latitude, longitude: storeLocation.longitude },
+          ];
+          if (isConfirmed) {
+            markers.push(newClientLoc);
+          }
+
+          setTimeout(() => {
+            if (mapRef.current) {
+              if (markers.length > 1) {
+                mapRef.current.fitToCoordinates(markers, {
+                  edgePadding: { top: 80, right: 50, bottom: 150, left: 50 },
+                  animated: true,
+                });
+              } else {
+                mapRef.current.animateToRegion(storeLocation, 1000);
+              }
+            }
+          }, 600);
         }
+      } else {
+        setClientLocation(null);
+        setLocationConfirmed(false);
       }
     } catch (e) {
-      console.log('Erro ao buscar localização do cliente.');
+      console.log('Erro ao buscar localização do cliente.', e);
     }
   };
 

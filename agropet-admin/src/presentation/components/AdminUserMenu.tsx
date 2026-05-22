@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedba
 import { useNavigation } from '@react-navigation/native';
 import { useUserMenu } from '../contexts/UserMenuContext';
 import { AuthContext } from '../contexts/AuthContext';
-import Colors from '../theme/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const AdminUserMenu = () => {
   const { isMenuVisible, closeMenu } = useUserMenu();
   const { signOut } = React.useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
 
   if (!isMenuVisible) return null;
 
@@ -25,6 +26,8 @@ export const AdminUserMenu = () => {
     navigation.navigate(screenName, params);
   };
 
+  const itemUnderlay = isDarkMode ? '#3E3E4A' : '#F5F5F5';
+
   return (
     <Modal
       transparent
@@ -34,33 +37,36 @@ export const AdminUserMenu = () => {
     >
       <TouchableWithoutFeedback onPress={closeMenu}>
         <View style={styles.overlay}>
-          <View style={styles.menuContainer}>
+          <View style={[styles.menuContainer, { 
+            backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF',
+            borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB'
+          }]}>
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#F5F5F5"
-              onPress={() => handleNavigate('AdminProfile')} // Assuming AdminProfile placeholder or real
+              underlayColor={itemUnderlay}
+              onPress={() => handleNavigate('AdminProfile')}
             >
-              <Text style={styles.menuText}>Ver perfil</Text>
+              <Text style={[styles.menuText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Ver perfil</Text>
             </TouchableHighlight>
             
-            <View style={styles.menuSeparator} />
+            <View style={[styles.menuSeparator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} />
 
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#F5F5F5"
+              underlayColor={itemUnderlay}
               onPress={() => handleNavigate('AdminOrdersScreen')}
             >
-              <Text style={styles.menuText}>Ver pedidos</Text>
+              <Text style={[styles.menuText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Ver pedidos</Text>
             </TouchableHighlight>
 
-            <View style={styles.menuSeparator} />
+            <View style={[styles.menuSeparator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} />
 
             <TouchableHighlight 
               style={styles.menuItem} 
-              underlayColor="#F5F5F5"
+              underlayColor={itemUnderlay}
               onPress={() => handleNavigate('Logout')}
             >
-              <Text style={[styles.menuText, { color: '#C41919' }]}>Sair</Text>
+              <Text style={[styles.menuText, { color: isDarkMode ? '#D51F1F' : '#C41919' }]}>Sair</Text>
             </TouchableHighlight>
           </View>
         </View>

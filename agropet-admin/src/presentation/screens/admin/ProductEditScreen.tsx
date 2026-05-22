@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   View,
   Text,
@@ -17,16 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../../../data/datasources/supabase/client';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
-
-// Filter SVGs
-import FiltroIcon from '../../assets/tela9/filtro/Filtro Icon.svg';
-import FiltroText from '../../assets/tela9/filtro/Filtro.svg';
-import CategoriaText from '../../assets/tela9/filtro/Categoria_.svg';
-import RacaoText from '../../assets/tela9/filtro/Ração.svg';
-import PescaText from '../../assets/tela9/filtro/Pesca.svg';
-import SementesText from '../../assets/tela9/filtro/Sementes.svg';
-import AduboText from '../../assets/tela9/filtro/Adubo ....svg';
-import SeparadorFiltro from '../../assets/tela9/filtro/Separador.svg';
+import { Feather } from '@expo/vector-icons';
 
 // Form SVGs
 import NoPhotoSvg from '../../assets/tela8/No photo.svg'; // Reuse placeholder if no photo
@@ -43,6 +35,7 @@ import EditIconQtd from '../../assets/tela9/formulario/quantidade/Edit.svg';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ProductEditScreen() {
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const product = route.params?.product;
@@ -158,61 +151,97 @@ export default function ProductEditScreen() {
     }
   };
 
+  const labelColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+  const sepColor = isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268';
+
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header with search bar */}
       <AdminHeader title="editar_produto" searchValue={searchText} onSearchChange={setSearchText} />
 
       {/* Filter Bar */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterBar}>
-          <FiltroIcon width={14} height={14} />
-          <FiltroText width={28} height={11} />
-          <SeparadorFiltro width={1} height={22} />
-          <CategoriaText width={58} height={13} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Ração' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Ração' ? null : 'Ração')}
+      <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+        <View style={[styles.filterPill, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
+          {/* FiltroIcon + texto */}
+          <View style={styles.filterBtn}>
+            <Feather name="sliders" size={12} color={labelColor} />
+            <Text style={[styles.filterBtnText, { color: labelColor }]}>Filtro</Text>
+          </View>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          <Text style={[styles.categoryLabelText, { color: labelColor }]}>Categoria</Text>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          {/* Tags — com destaque no ativo */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesRow}
           >
-            <RacaoText width={36} height={13} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Pesca' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Pesca' ? null : 'Pesca')}
-          >
-            <PescaText width={35} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Sementes' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Sementes' ? null : 'Sementes')}
-          >
-            <SementesText width={56} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Adubo' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Adubo' ? null : 'Adubo')}
-          >
-            <AduboText width={62} height={11} />
-          </TouchableOpacity>
+            {['Ração', 'Pesca', 'Sementes', 'Adubo'].map((category) => {
+              const isSelected = activeCategory === category;
+              
+              let tagBg = 'transparent';
+              if (isSelected) {
+                tagBg = '#5B86E5';
+              }
+
+              let tagTextColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+              if (isSelected) {
+                tagTextColor = '#FFFFFF';
+              }
+
+              return (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => {
+                    setActiveCategory(activeCategory === category ? null : category);
+                  }}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.tagItem,
+                    { backgroundColor: tagBg }
+                  ]}
+                >
+                  <Text 
+                    style={[
+                      styles.tagText, 
+                      { 
+                        color: tagTextColor,
+                        fontWeight: isSelected ? 'bold' : 'normal'
+                      }
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.formCard}>
+        <View style={[styles.formCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
           {/* Photo Section */}
           <View style={styles.photoSection}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.productPhoto} />
             ) : (
-              <NoPhotoSvg width={310} height={220} />
+              <NoPhotoSvg width={310} height={220} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
             )}
             <TouchableOpacity style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
-              <TrocarFotoSvg width={140} height={24} />
+              {isDarkMode ? (
+                <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', minWidth: 140 }}>
+                  Trocar foto
+                </Text>
+              ) : (
+                <TrocarFotoSvg width={140} height={24} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -222,7 +251,7 @@ export default function ProductEditScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 ref={nameRef}
-                style={[styles.inputField, isEditingName && styles.inputFieldEditing]}
+                style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, isEditingName && styles.inputFieldEditing]}
                 value={name}
                 onChangeText={setName}
                 editable={isEditingName}
@@ -236,7 +265,7 @@ export default function ProductEditScreen() {
                   setTimeout(() => nameRef.current?.focus(), 100);
                 }}
               >
-                <EditIconNome width={16} height={16} />
+                <EditIconNome width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
               </TouchableOpacity>
             </View>
 
@@ -244,7 +273,7 @@ export default function ProductEditScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 ref={descRef}
-                style={[styles.inputField, styles.textArea, isEditingDesc && styles.inputFieldEditing]}
+                style={[styles.inputField, styles.textArea, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, isEditingDesc && styles.inputFieldEditing]}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -261,7 +290,7 @@ export default function ProductEditScreen() {
                   setTimeout(() => descRef.current?.focus(), 100);
                 }}
               >
-                <EditIconDesc width={16} height={16} />
+                <EditIconDesc width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
               </TouchableOpacity>
             </View>
 
@@ -270,11 +299,11 @@ export default function ProductEditScreen() {
               <View style={styles.smallInputWrapper}>
                 <View style={styles.inputContainer}>
                   {price.length > 0 && (
-                    <Text style={styles.currencyPrefix}>R$</Text>
+                    <Text style={[styles.currencyPrefix, { color: colors.textDark }]}>R$</Text>
                   )}
                   <TextInput
                     ref={priceRef}
-                    style={[styles.inputField, price.length > 0 && { paddingLeft: 42 }, isEditingPrice && styles.inputFieldEditing]}
+                    style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, price.length > 0 && { paddingLeft: 42 }, isEditingPrice && styles.inputFieldEditing]}
                     value={price}
                     onChangeText={setPrice}
                     keyboardType="numeric"
@@ -289,7 +318,7 @@ export default function ProductEditScreen() {
                       setTimeout(() => priceRef.current?.focus(), 100);
                     }}
                   >
-                    <EditIconPreco width={16} height={16} />
+                    <EditIconPreco width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -302,7 +331,7 @@ export default function ProductEditScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     ref={qtyRef}
-                    style={[styles.inputField, isEditingQty && styles.inputFieldEditing]}
+                    style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, isEditingQty && styles.inputFieldEditing]}
                     value={quantity}
                     onChangeText={setQuantity}
                     keyboardType="numeric"
@@ -317,14 +346,14 @@ export default function ProductEditScreen() {
                       setTimeout(() => qtyRef.current?.focus(), 100);
                     }}
                   >
-                    <EditIconQtd width={16} height={16} />
+                    <EditIconQtd width={16} height={16} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
                   </TouchableOpacity>
                 </View>
               </View>
               <View style={styles.smallInputWrapper}>
                 <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
                   <FundoConfirmarSvg width="100%" height={50} style={{ position: 'absolute', borderRadius: 10 }} />
-                  <ConfirmarSvg width="70%" height={20} style={{ zIndex: 1 }} />
+                  <ConfirmarSvg width="70%" height={20} style={{ zIndex: 1 }} fill={isDarkMode ? '#FFFFFF' : undefined} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -345,20 +374,20 @@ export default function ProductEditScreen() {
           activeOpacity={1} 
           onPress={() => setShowImagePickerOptions(false)}
         >
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Trocar Foto do Produto</Text>
+          <View style={[styles.modalContainer, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+            <Text style={[styles.modalTitle, { color: colors.textDark }]}>Trocar Foto do Produto</Text>
             
             <TouchableOpacity style={styles.modalOption} onPress={openCamera}>
-              <Text style={styles.modalOptionText}>Tirar Foto</Text>
+              <Text style={[styles.modalOptionText, { color: colors.textDark }]}>Tirar Foto</Text>
             </TouchableOpacity>
             
-            <View style={styles.modalSeparator} />
+            <View style={[styles.modalSeparator, { backgroundColor: isDarkMode ? '#333333' : '#E3E4EB' }]} />
             
             <TouchableOpacity style={styles.modalOption} onPress={openGallery}>
-              <Text style={styles.modalOptionText}>Escolher da Galeria</Text>
+              <Text style={[styles.modalOptionText, { color: colors.textDark }]}>Escolher da Galeria</Text>
             </TouchableOpacity>
             
-            <View style={styles.modalSeparator} />
+            <View style={[styles.modalSeparator, { backgroundColor: isDarkMode ? '#333333' : '#E3E4EB' }]} />
             
             <TouchableOpacity 
               style={[styles.modalOption, { marginTop: 10 }]} 
@@ -387,23 +416,48 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
   },
-  filterBar: {
+  filterPill: {
+    flexDirection: 'row',
+    borderRadius: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 10,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3E4EB',
-    borderRadius: 25,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    gap: 6,
+    gap: 4,
   },
-  filterTag: {
-    paddingHorizontal: 3,
-    paddingVertical: 3,
-    borderRadius: 4,
+  filterSep: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#8A7268',
   },
-  filterTagActive: {
-    backgroundColor: 'rgba(249, 125, 1, 0.2)',
-    borderRadius: 6,
+  filterBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  categoryLabelText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 10,
+  },
+  tagItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 12,
   },
   // ===== FORM =====
   scrollContent: {

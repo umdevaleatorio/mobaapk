@@ -4,23 +4,9 @@ import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// Body Labels
-import PedidosDeHojeSvg from '../../assets/tela5/Pedidos de hoje_.svg';
-
-// Card
-import NumPedidoSvg from '../../assets/tela5/em entrega/pedido 1/Nº do pedido.svg';
-import FormaPgtoSvg from '../../assets/tela5/em entrega/pedido 1/Forma de pagamento.svg';
-import SituaPgtoSvg from '../../assets/tela5/em entrega/pedido 1/Situação do pagamento.svg';
-import VerProdutosSvg from '../../assets/tela5/em entrega/pedido 1/Ver produtos.svg';
-import PixSvg from '../../assets/tela5/em entrega/pedido 1/PIX.svg';
-import PgtoAprovadoSvg from '../../assets/tela5/em entrega/pedido 1/Pagamento aprovado.svg';
-import DinheiroSvg from '../../assets/tela5/em entrega/pedido 4/Dinheiro.svg';
-import RastrearSvg from '../../assets/tela5/Rastrear.svg';
-
-import Separador1 from '../../assets/tela5/em entrega/pedido 1/Separador 1.svg';
-import Separador2 from '../../assets/tela5/em entrega/pedido 1/Separador 2.svg';
-import Separador3 from '../../assets/tela5/em entrega/pedido 1/Separador 3.svg';
+// SVGs for Tab Bar only (cleaned card/text SVGs)
 
 // Barra Inferior Inativa (Marrom)
 import HomeIcon8 from '../../assets/tela5/barra de baixo/Home.svg';
@@ -31,9 +17,11 @@ import MenuLabel8 from '../../assets/tela5/barra de baixo/Menu.svg';
 import MapaLabel8 from '../../assets/tela5/barra de baixo/Mapa.svg';
 import GerenciarLabel8 from '../../assets/tela5/barra de baixo/Gerenciar.svg';
 import OpcoesLabel8 from '../../assets/tela5/barra de baixo/Opções.svg';
+import RastrearSvg from '../../assets/tela5/Rastrear.svg';
 
 export default function AdminOrdersScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -96,11 +84,16 @@ export default function AdminOrdersScreen() {
 
   const getPaymentDisplay = (paymentMethod: string) => {
     switch(paymentMethod) {
-      case 'pix': return <PixSvg width={25} height={12} />;
-      case 'cartao_credito': return <Text style={[styles.pgtoText, { color: '#FF0000' }]}>Cartão/Crédito</Text>;
-      case 'cartao_debito': return <Text style={[styles.pgtoText, { color: '#2A7420' }]}>Cartão/Débito</Text>;
-      case 'dinheiro': return <DinheiroSvg width={50} height={15} />;
-      default: return <Text style={styles.pgtoText}>{paymentMethod}</Text>;
+      case 'pix': 
+        return <Text style={[styles.valText, { color: '#00BFA5', fontWeight: 'bold' }]}>PIX</Text>;
+      case 'cartao_credito': 
+        return <Text style={[styles.valText, { color: '#D32F2F', fontWeight: 'bold' }]}>Crédito</Text>;
+      case 'cartao_debito': 
+        return <Text style={[styles.valText, { color: isDarkMode ? '#4ADE80' : '#4CAF50', fontWeight: 'bold' }]}>Débito</Text>;
+      case 'dinheiro': 
+        return <Text style={[styles.valText, { color: isDarkMode ? '#43A047' : '#1B5E20', fontWeight: 'bold' }]}>Dinheiro</Text>;
+      default: 
+        return <Text style={[styles.valText, { color: colors.textDark, fontWeight: 'bold' }]}>{paymentMethod}</Text>;
     }
   };
 
@@ -113,68 +106,63 @@ export default function AdminOrdersScreen() {
   });
 
   const renderOrderCard = (order: any, isCancelled: boolean) => {
+    const cardBgColor = isDarkMode ? '#2E2E38' : '#E3E4EB';
+    const separatorColor = isDarkMode ? '#18181C' : '#F5F5F5';
+    const labelColor = isDarkMode ? '#4A90E2' : '#2B6CB0';
+
     return (
-      <View key={order.id} style={[styles.orderCard, isCancelled && { opacity: 0.6 }]}>
+      <View key={order.id} style={[styles.orderCard, { backgroundColor: cardBgColor }, isCancelled && { opacity: 0.6 }]}>
         
         {/* Coluna 1: Nº do Pedido */}
         <View style={styles.colContainer}>
-          <NumPedidoSvg width={72} height={12} style={{ marginBottom: 12 }} />
-          <Text style={styles.valText}>{order.id.slice(0, 8).toUpperCase()}</Text>
+          <Text style={[styles.columnLabel, { color: labelColor }]}>Nº do pedido</Text>
+          <Text style={[styles.valText, { color: colors.textDark, fontWeight: 'bold' }]}>{order.id.slice(0, 8).toUpperCase()}</Text>
         </View>
 
         {/* Separador 1 */}
-        <Separador1 height={100} style={{ alignSelf: 'center' }} />
+        <View style={{ width: 1, height: '100%', backgroundColor: separatorColor }} />
 
         {/* Coluna 2: Forma de pagamento */}
         <View style={styles.colContainer}>
-          <FormaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
+          <Text style={[styles.columnLabel, { color: labelColor }]}>Forma de{"\n"}pagamento</Text>
           {getPaymentDisplay(order.payment_method)}
         </View>
 
         {/* Separador 2 */}
-        <Separador2 height={100} style={{ alignSelf: 'center' }} />
+        <View style={{ width: 1, height: '100%', backgroundColor: separatorColor }} />
 
         {/* Coluna 3: Situação do pagamento */}
         <View style={styles.colContainer}>
-          <SituaPgtoSvg width={65} height={22} style={{ marginBottom: 12 }} />
+          <Text style={[styles.columnLabel, { color: labelColor }]}>Situação do{"\n"}pagamento</Text>
           {order.status === 'cancelled' ? (
-            <Text style={[styles.valText, { color: '#757575' }]}>Cancelado</Text>
+            <Text style={[styles.valText, { color: '#FF6B6B', fontWeight: 'bold' }]}>Cancelado</Text>
           ) : order.status === 'confirmed' || order.status === 'completed' ? (
-            <PgtoAprovadoSvg width={65} height={22} />
+            <Text style={[styles.valText, { color: isDarkMode ? '#4ADE80' : '#339914', fontWeight: 'bold' }]}>Aprovado</Text>
           ) : (
-            <Text style={[styles.valText, { color: '#e69900' }]}>Pendente</Text>
+            <Text style={[styles.valText, { color: '#e69900', fontWeight: 'bold' }]}>Pendente</Text>
           )}
         </View>
 
         {/* Separador 3 */}
-        <Separador3 height={100} style={{ alignSelf: 'center' }} />
+        <View style={{ width: 1, height: '100%', backgroundColor: separatorColor }} />
 
         {/* Coluna 4: Rastrear e Ver Produtos */}
         <View style={[styles.colContainer, { gap: 6 }]}>
-          {isCancelled ? (
-            <TouchableOpacity 
-              disabled={true} 
-              activeOpacity={1}
-              style={[styles.verProdutosBtn, { opacity: 0.3 }]}
-            >
-              <RastrearSvg width={57} height={14} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              style={styles.verProdutosBtn}
-              onPress={() => handleTrackOrder(order)}
-            >
-              <RastrearSvg width={57} height={14} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity 
+            activeOpacity={0.7} 
+            style={[isCancelled && { opacity: 0.3 }]}
+            onPress={() => !isCancelled && handleTrackOrder(order)}
+            disabled={isCancelled}
+          >
+            <RastrearSvg width={57} height={14} />
+          </TouchableOpacity>
 
           <TouchableOpacity 
             activeOpacity={0.7} 
             style={styles.verProdutosBtn}
             onPress={() => navigation.navigate('AdminOrderDetailScreen', { order })}
           >
-            <VerProdutosSvg width={61} height={34} />
+            <Text style={{ color: isDarkMode ? '#FFE082' : '#042A7D', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>Ver produtos</Text>
           </TouchableOpacity>
         </View>
 
@@ -182,8 +170,10 @@ export default function AdminOrdersScreen() {
     );
   };
 
+  const iconColorInactive = isDarkMode ? '#FFFFFF' : undefined;
+
   return (
-    <View style={styles.mainContainer}>
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
       
       {/* Header Admin */}
       <AdminHeader title="ver_pedidos" />
@@ -192,13 +182,13 @@ export default function AdminOrdersScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         <View style={styles.sectionHeader}>
-          <PedidosDeHojeSvg width={180} height={20} />
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', marginLeft: 4 }}>Pedidos de hoje:</Text>
         </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#339914" style={{ marginTop: 20 }} />
         ) : activeOrders.length === 0 ? (
-          <Text style={styles.emptyText}>Não há pedidos ativos registrados.</Text>
+          <Text style={[styles.emptyText, { color: colors.textDark }]}>Não há pedidos ativos registrados.</Text>
         ) : (
           activeOrders.map(order => renderOrderCard(order, false))
         )}
@@ -207,10 +197,10 @@ export default function AdminOrdersScreen() {
         {!loading && (
           <View style={{ marginTop: 25 }}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.cancelledSectionTitle}>Pedidos cancelados</Text>
+              <Text style={[styles.cancelledSectionTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Pedidos cancelados:</Text>
             </View>
             {cancelledOrders.length === 0 ? (
-              <Text style={styles.emptyText}>Não há pedidos cancelados, Uhuu 🥳</Text>
+              <Text style={[styles.emptyText, { color: colors.textDark }]}>Não há pedidos cancelados, Uhuu 🥳</Text>
             ) : (
               cancelledOrders.map(order => renderOrderCard(order, true))
             )}
@@ -220,39 +210,39 @@ export default function AdminOrdersScreen() {
 
       {/* ========== BARRA INFERIOR (Tudo Inativo) ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={styles.tabBarInner}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Home' })}>
             <View style={styles.iconBgInactive}>
-              <HomeIcon8 width={32} height={32} />
+              <HomeIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <MenuLabel8 width={33} height={9} />
+            <MenuLabel8 width={33} height={9} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Mapa' })}>
             <View style={styles.iconBgInactive}>
-              <MapIcon8 width={32} height={32} />
+              <MapIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <MapaLabel8 width={32} height={12} />
+            <MapaLabel8 width={32} height={12} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Gerenciar' })}>
             <View style={styles.iconBgInactive}>
-              <ManageIcon8 width={32} height={32} />
+              <ManageIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <GerenciarLabel8 width={55} height={10} />
+            <GerenciarLabel8 width={55} height={10} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
 
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Opções' })}>
             <View style={styles.iconBgInactive}>
-              <GearIcon8 width={32} height={32} />
+              <GearIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <OpcoesLabel8 width={42} height={12} />
+            <OpcoesLabel8 width={42} height={12} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -289,11 +279,17 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   cancelledSectionTitle: {
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1C2434',
     marginLeft: 4,
     marginBottom: 8,
+  },
+  columnLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 10,
   },
 
   // ========== CARD ==========
@@ -324,8 +320,10 @@ const styles = StyleSheet.create({
   },
   verProdutosBtn: {
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingVertical: 2,
   },
+
 
   // ========== BARRA INFERIOR ==========
   tabBarOuter: {

@@ -11,28 +11,19 @@ import {
   Image,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
 import { supabase } from '../../../data/datasources/supabase/client';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
-
-// Filter SVGs
-import FiltroIcon from '../../assets/tela7/filtro/Filtro Icon.svg';
-import FiltroText from '../../assets/tela7/filtro/Filtro.svg';
-import CategoriaText from '../../assets/tela7/filtro/Categoria_.svg';
-import RacaoText from '../../assets/tela7/filtro/Ração.svg';
-import PescaText from '../../assets/tela7/filtro/Pesca.svg';
-import SementesText from '../../assets/tela7/filtro/Sementes.svg';
-import AduboText from '../../assets/tela7/filtro/Adubo ....svg';
-import SeparadorFiltro from '../../assets/tela7/filtro/Separador.svg';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Button SVGs
 import CheckIcon from '../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
-import RegistrarProdutoText from '../../assets/tela7/registrar/Adicionar/Remover/Registrar produto.svg';
 import DeleteProductIcon from '../../assets/tela7/excluir/Adicionar/Remover/Delete product.svg';
-import ExcluirProdutoText from '../../assets/tela7/excluir/Adicionar/Remover/Excluir produto.svg';
 
 // Product card SVGs (using produto 1 as reusable icons)
 import EditIcon from '../../assets/tela7/produtos/produto 1/Adicionar/Remover/Edit.svg';
@@ -46,25 +37,26 @@ import ToggleInactiveSvg from '../../assets/tela7/produtos/produto 4/Adicionar/R
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ManageProductsScreen() {
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
   
   // Selection mode for mass deletion
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (currentCategories = activeCategories) => {
     setLoading(true);
     let query = supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false });
       
-    if (activeCategory) {
-      query = query.eq('category_id', activeCategory);
+    if (currentCategories.length > 0) {
+      query = query.in('category_id', currentCategories);
     }
 
     const { data, error } = await query;
@@ -78,11 +70,15 @@ export default function ManageProductsScreen() {
 
   useEffect(() => {
     fetchProducts();
+  }, [activeCategories]);
+
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchProducts();
+      setActiveCategories([]);
+      fetchProducts([]);
     });
     return unsubscribe;
-  }, [navigation, activeCategory]);
+  }, [navigation]);
 
   const filteredProducts = products.filter(p =>
     p.name?.toLowerCase().includes(searchText.toLowerCase())
@@ -183,27 +179,28 @@ export default function ManageProductsScreen() {
     return (
       <View style={[
         styles.productCard, 
+        { backgroundColor: isDarkMode ? colors.cardBackground : '#E3E4EB' },
         isSelected && styles.selectedCard,
         !isActive && styles.cardInactive,
       ]}>
-        {/* Edit icon - top-left area, just outside the main content */}
+        {/* Edit icon - top-right area, inside the bounds to ensure touch event works on Android */}
         <TouchableOpacity 
           style={styles.editIconBtn}
           onPress={() => {
             if (!selectionMode) navigation.navigate('ProductEditScreen', { product: item });
           }}
         >
-          <EditIcon width={20} height={20} />
+          <EditIcon width={20} height={20} fill={isDarkMode ? '#38BDF8' : undefined} stroke={isDarkMode ? '#38BDF8' : undefined} />
         </TouchableOpacity>
 
-        {/* Trash icon - bottom-left, aligned horizontally with edit */}
+        {/* Trash icon - bottom-right, inside the bounds to ensure touch event works on Android */}
         <TouchableOpacity 
           style={styles.trashIconBtn}
           onPress={() => {
             if (!selectionMode) deleteProduct(item.id);
           }}
         >
-          <TrashIcon width={19} height={20} />
+          <TrashIcon width={19} height={20} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
         </TouchableOpacity>
 
         {/* Main content row */}
@@ -215,7 +212,7 @@ export default function ManageProductsScreen() {
               onPress={() => toggleSelection(item.id)}
             >
               <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                {isSelected && <Text style={styles.checkmark}>X</Text>}
               </View>
             </TouchableOpacity>
           )}
@@ -225,36 +222,36 @@ export default function ManageProductsScreen() {
             {item.image_url ? (
               <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
             ) : (
-              <View style={[styles.productImage, styles.noImage]}>
-                <Text style={styles.noImageText}>Sem{'\n'}Foto</Text>
+              <View style={[styles.productImage, styles.noImage, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+                <Text style={[styles.noImageText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Sem{'\n'}Foto</Text>
               </View>
             )}
           </View>
 
           {/* Separator 1 */}
-          <CardSeparator width={1} height={100} />
+          <View style={{ width: 1, height: '100%', backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }} />
 
           {/* Name column */}
           <View style={styles.nameColumn}>
-            <Text style={styles.columnHeader}>Nome do{'\n'}produto</Text>
-            <Text style={styles.productName} numberOfLines={2}>{item.name || 'Sem nome'}</Text>
+            <Text style={[styles.columnHeader, { color: colors.textDark }]}>Nome do{'\n'}produto</Text>
+            <Text style={[styles.productName, { color: colors.textDark }]} numberOfLines={2}>{item.name || 'Sem nome'}</Text>
           </View>
 
           {/* Separator 2 */}
-          <CardSeparator width={1} height={100} />
+          <View style={{ width: 1, height: '100%', backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }} />
 
           {/* Quantidade column */}
           <View style={styles.quantityColumn}>
-            <Text style={styles.columnHeader}>Quantidade</Text>
-            <Text style={styles.quantityValue}>{item.stock || 0}</Text>
+            <Text style={[styles.columnHeader, { color: colors.textDark }]}>Quantidade</Text>
+            <Text style={[styles.quantityValue, { color: colors.textDark }]}>{item.stock || 0}</Text>
           </View>
 
           {/* Separator 3 */}
-          <CardSeparator width={1} height={100} />
+          <View style={{ width: 1, height: '100%', backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }} />
 
           {/* Situação column */}
           <View style={styles.statusColumn}>
-            <Text style={styles.columnHeader}>Situação</Text>
+            <Text style={[styles.columnHeader, { color: colors.textDark }]}>Situação</Text>
             {isActive ? (
               <AtivoSvg width={35} height={12} />
             ) : (
@@ -278,47 +275,81 @@ export default function ManageProductsScreen() {
     );
   };
 
+  const labelColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+  const sepColor = isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268';
+
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header with search bar */}
       <AdminHeader title="gerenciar" searchValue={searchText} onSearchChange={setSearchText} />
 
       {/* Filter Bar - centered with rounded background, wider */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterBar}>
-          <FiltroIcon width={14} height={14} />
-          <FiltroText width={28} height={11} />
-          <SeparadorFiltro width={1} height={22} />
-          <CategoriaText width={58} height={13} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Ração' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Ração' ? null : 'Ração')}
+      <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
+        <View style={[styles.filterPill, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
+          {/* FiltroIcon + texto */}
+          <View style={styles.filterBtn}>
+            <Feather name="sliders" size={12} color={labelColor} />
+            <Text style={[styles.filterBtnText, { color: labelColor }]}>Filtro</Text>
+          </View>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          <Text style={[styles.categoryLabelText, { color: labelColor }]}>Categoria</Text>
+
+          <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
+
+          {/* Tags — com destaque no ativo */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesRow}
           >
-            <RacaoText width={36} height={13} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Pesca' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Pesca' ? null : 'Pesca')}
-          >
-            <PescaText width={35} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Sementes' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Sementes' ? null : 'Sementes')}
-          >
-            <SementesText width={56} height={11} />
-          </TouchableOpacity>
-          <SeparadorFiltro width={1} height={22} />
-          <TouchableOpacity 
-            style={[styles.filterTag, activeCategory === 'Adubo' && styles.filterTagActive]}
-            onPress={() => setActiveCategory(activeCategory === 'Adubo' ? null : 'Adubo')}
-          >
-            <AduboText width={62} height={11} />
-          </TouchableOpacity>
+            {['Ração', 'Pesca', 'Sementes', 'Adubo'].map((category) => {
+              const isSelected = activeCategories.includes(category);
+              
+              let tagBg = 'transparent';
+              if (isSelected) {
+                tagBg = '#5B86E5';
+              }
+
+              let tagTextColor = isDarkMode ? '#FFFFFF' : '#8A7268';
+              if (isSelected) {
+                tagTextColor = '#FFFFFF';
+              }
+
+              return (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => {
+                    setActiveCategories(prev =>
+                      prev.includes(category)
+                        ? prev.filter(c => c !== category)
+                        : [...prev, category]
+                    );
+                  }}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.tagItem,
+                    { backgroundColor: tagBg }
+                  ]}
+                >
+                  <Text 
+                    style={[
+                      styles.tagText, 
+                      { 
+                        color: tagTextColor,
+                        fontWeight: isSelected ? 'bold' : 'normal'
+                      }
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
       </View>
 
@@ -328,34 +359,46 @@ export default function ManageProductsScreen() {
           style={styles.registerBtn}
           onPress={() => navigation.navigate('ProductCreateScreen')}
         >
-          <CheckIcon width={34} height={34} />
-          <RegistrarProdutoText width={130} height={20} />
+          <CheckIcon width={34} height={34} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+          <Text style={styles.actionBtnText}>Registrar produto</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.massDeleteBtn, selectionMode && styles.massDeleteBtnActive]}
-          onPress={handleMassDelete}
-        >
-          <DeleteProductIcon width={33} height={32} />
-          {selectionMode ? (
-            <Text style={styles.massDeleteBtnText}>
-              Confirmar ({selectedProductIds.size})
-            </Text>
-          ) : (
-            <ExcluirProdutoText width={115} height={20} />
+        <View style={styles.deleteColumnContainer}>
+          <TouchableOpacity 
+            style={[styles.massDeleteBtn, selectionMode && styles.massDeleteBtnActive]}
+            onPress={handleMassDelete}
+          >
+            <DeleteProductIcon 
+              width={33} 
+              height={32} 
+              fill={isDarkMode ? '#FFFFFF' : undefined} 
+              stroke={isDarkMode ? '#FFFFFF' : undefined} 
+              style={{ marginRight: 8 }}
+            />
+            {selectionMode ? (
+              <Text style={styles.massDeleteBtnText}>
+                Confirmar ({selectedProductIds.size})
+              </Text>
+            ) : (
+              <Text style={styles.actionBtnText}>Excluir produto</Text>
+            )}
+          </TouchableOpacity>
+
+          {selectionMode && (
+            <TouchableOpacity 
+              style={[styles.cancelSelectionBtn, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]} 
+              onPress={() => {
+                setSelectionMode(false);
+                setSelectedProductIds(new Set());
+              }}
+            >
+              <Text style={[styles.cancelSelectionText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+                Cancelar Seleção
+              </Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Cancel Selection Mode Button */}
-      {selectionMode && (
-        <TouchableOpacity style={styles.cancelSelectionBtn} onPress={() => {
-          setSelectionMode(false);
-          setSelectedProductIds(new Set());
-        }}>
-          <Text style={styles.cancelSelectionText}>Cancelar Seleção</Text>
-        </TouchableOpacity>
-      )}
 
       {/* ========== LISTA DE PRODUTOS (vertical) ========== */}
       {loading ? (
@@ -371,7 +414,7 @@ export default function ManageProductsScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Nenhum produto encontrado</Text>
+              <Text style={[styles.emptyText, { color: colors.textDark }]}>Nenhum produto encontrado</Text>
             </View>
           }
         />
@@ -398,23 +441,48 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
   },
-  filterBar: {
+  filterPill: {
+    flexDirection: 'row',
+    borderRadius: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 10,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3E4EB',
-    borderRadius: 25,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    gap: 6,
+    gap: 4,
   },
-  filterTag: {
-    paddingHorizontal: 3,
-    paddingVertical: 3,
-    borderRadius: 4,
+  filterSep: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#8A7268',
   },
-  filterTagActive: {
-    backgroundColor: 'rgba(249, 125, 1, 0.2)',
-    borderRadius: 6,
+  filterBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  categoryLabelText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 10,
+  },
+  tagItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 12,
   },
   // ===== ACTION BUTTONS =====
   actionButtonsRow: {
@@ -433,20 +501,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 15,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
     height: 46,
   },
   massDeleteBtn: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'row',
     backgroundColor: '#A72424',
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 15,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
     height: 46,
   },
   massDeleteBtnActive: {
@@ -457,17 +525,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 15,
   },
-  cancelSelectionBtn: {
-    marginHorizontal: 16,
-    marginBottom: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#CCC',
+  deleteColumnContainer: {
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
   },
-  cancelSelectionText: {
-    color: '#1C2434',
+  actionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  cancelSelectionBtn: {
+    width: '105%',
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  cancelSelectionText: {
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   // ===== PRODUCTS LIST =====
   productsList: {
@@ -520,7 +599,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 4,
-    borderWidth: 2,
+    borderWidth: 1.2,
     borderColor: '#A72424',
     alignItems: 'center',
     justifyContent: 'center',
@@ -600,20 +679,20 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     height: '100%',
   },
-  // Edit icon - top right, more to the left
+  // Edit icon - top right, inside the card container boundaries to preserve touch area
   editIconBtn: {
     position: 'absolute',
-    top: -6,
-    right: -4,
+    top: 6,
+    right: 8,
     zIndex: 2,
-    padding: 2,
+    padding: 6,
   },
   // Trash icon - bottom right, aligned with edit
   trashIconBtn: {
     position: 'absolute',
-    bottom: -6,
-    right: -4,
+    bottom: 6,
+    right: 8,
     zIndex: 2,
-    padding: 2,
+    padding: 6,
   },
 });

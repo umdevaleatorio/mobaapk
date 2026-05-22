@@ -17,6 +17,88 @@ import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ThemeContext';
+
+const darkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+  {
+    featureType: 'administrative.locality',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#d59563' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#d59563' }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry',
+    stylers: [{ color: '#263c3f' }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#6b9a76' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: '#38414e' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#212a37' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#9ca5b3' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: '#746855' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#1f2835' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#f3d19c' }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'geometry',
+    stylers: [{ color: '#2f3948' }],
+  },
+  {
+    featureType: 'transit.station',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#d59563' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#17263c' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#515c6d' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: '#17263c' }],
+  },
+];
 
 // LupaIcon (or simple search bar icon)
 import LupaIcon from '../../assets/tela7/parte superior/Adicionar/Remover/Barra de Pesquisa.svg';
@@ -189,10 +271,16 @@ const FiorinoIcon = ({ facingRight = true }: { facingRight?: boolean }) => {
   );
 };
 
+const isNightTime = () => {
+  const hours = new Date().getHours();
+  return hours >= 18 || hours < 6;
+};
+
 export default function AdminMapScreen() {
   const mapRef = useRef<MapView>(null);
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
 
   const [storeLocation, setStoreLocation] = useState(DEFAULT_STORE_LOCATION);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -558,8 +646,8 @@ export default function AdminMapScreen() {
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header Admin */}
       <AdminHeader title="mapa" />
@@ -568,11 +656,11 @@ export default function AdminMapScreen() {
       <View style={styles.mapContainer}>
         {/* Floating Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputWrapper}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.textDark }]}
               placeholder="Pesquisar local..."
-              placeholderTextColor="#919191"
+              placeholderTextColor={isDarkMode ? '#A0A0A0' : '#919191'}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -580,14 +668,14 @@ export default function AdminMapScreen() {
           
           {/* Suggestions Dropdown */}
           {suggestions.length > 0 && (
-            <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="handled">
+            <ScrollView style={[styles.suggestionsList, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]} keyboardShouldPersistTaps="handled">
               {suggestions.map((item, index) => (
                 <TouchableOpacity 
                   key={index} 
-                  style={styles.suggestionItem}
+                  style={[styles.suggestionItem, { borderBottomColor: isDarkMode ? '#2E2E38' : '#F0F0F0' }]}
                   onPress={() => handleSelectLocation(item)}
                 >
-                  <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
+                  <Text style={[styles.suggestionText, { color: colors.textDark }]} numberOfLines={2}>{item.display_name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -600,6 +688,7 @@ export default function AdminMapScreen() {
           initialRegion={storeLocation}
           showsUserLocation={true}
           showsMyLocationButton={true}
+          customMapStyle={isNightTime() ? darkMapStyle : undefined}
         >
           {/* Pin da loja (Sempre visível e arrastável em modo de edição) */}
           <Marker
@@ -694,16 +783,16 @@ export default function AdminMapScreen() {
         
         {/* Botão de Centralizar na Loja */}
         <TouchableOpacity 
-          style={styles.recenterBtn}
+          style={[styles.recenterBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderColor: isDarkMode ? '#2E2E38' : '#EFEFEF' }]}
           onPress={() => {
             if (mapRef.current) {
               mapRef.current.animateToRegion(storeLocation, 1000);
             }
           }}
         >
-          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1C2434" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colors.textDark} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <Circle cx="12" cy="12" r="7" />
-            <Circle cx="12" cy="12" r="2" fill="#1C2434" />
+            <Circle cx="12" cy="12" r="2" fill={colors.textDark} />
             <Line x1="12" y1="1" x2="12" y2="5" />
             <Line x1="12" y1="19" x2="12" y2="23" />
             <Line x1="1" y1="12" x2="5" y2="12" />
@@ -758,7 +847,8 @@ export default function AdminMapScreen() {
           <TouchableOpacity 
             style={[
               styles.setStoreBtn,
-              isEditingLocation && { backgroundColor: '#1C2434', borderColor: '#1C2434' }
+              { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderColor: isDarkMode ? '#2E2E38' : '#EFEFEF' },
+              isEditingLocation && { backgroundColor: colors.headerBackground, borderColor: colors.headerBackground }
             ]}
             onPress={() => {
               if (isEditingLocation) {
@@ -778,7 +868,7 @@ export default function AdminMapScreen() {
               }
             }}
           >
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={isEditingLocation ? "#FFFFFF" : "#1C2434"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={isEditingLocation ? "#FFFFFF" : colors.textDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
               <Circle cx="12" cy="10" r="3" />
             </Svg>
@@ -786,20 +876,20 @@ export default function AdminMapScreen() {
         )}
 
         {/* ========== LEGENDA ========== */}
-        <View style={styles.legendBox}>
+        <View style={[styles.legendBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
           {/* Ponto Vermelho - Loja */}
           <View style={styles.legendRow}>
             <View style={{ width: 24, alignItems: 'center' }}>
               <LegendPin color="#E53935" />
             </View>
-            <Text style={styles.legendText}>Loja AgroPet</Text>
+            <Text style={[styles.legendText, { color: colors.textDark }]}>Loja AgroPet</Text>
           </View>
           {/* Ponto Azul - Cliente */}
           <View style={styles.legendRow}>
             <View style={{ width: 24, alignItems: 'center' }}>
               <LegendPin color="#2196F3" />
             </View>
-            <Text style={styles.legendText}>Cliente</Text>
+            <Text style={[styles.legendText, { color: colors.textDark }]}>Cliente</Text>
           </View>
         </View>
 

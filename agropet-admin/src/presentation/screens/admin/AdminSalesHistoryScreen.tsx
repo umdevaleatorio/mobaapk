@@ -5,6 +5,7 @@ import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Top SVGs
 import HojeLabelSvg from '../../assets/tela6/resumos/Hoje_.svg';
@@ -37,6 +38,7 @@ import OpcoesLabel8 from '../../assets/tela5/barra de baixo/Opções.svg';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function AdminSalesHistoryScreen() {
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
@@ -127,8 +129,10 @@ export default function AdminSalesHistoryScreen() {
     }
   };
 
+    const iconColorInactive = isDarkMode ? '#FFFFFF' : undefined;
+
   return (
-    <View style={styles.mainContainer}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
       {/* Header */}
       <AdminHeader title="historico_vendas" />
 
@@ -139,28 +143,53 @@ export default function AdminSalesHistoryScreen() {
 
         {/* Filter Row: Hoje: [Selecionar data v] */}
         <View style={styles.filterRow}>
-          <HojeLabelSvg width={90} height={36} />
+          {isDarkMode ? (
+            <Text style={{ fontSize: 30, fontWeight: 'bold', color: '#FFFFFF', width: 110, height: 40, textAlignVertical: 'center', lineHeight: 40 }}>
+              Hoje:
+            </Text>
+          ) : (
+            <HojeLabelSvg width={90} height={36} />
+          )}
           
-          <TouchableOpacity activeOpacity={0.8} style={styles.filterBtn} onPress={() => setShowPicker(true)}>
-            <FundoBtnFiltro width={170} height={42} style={{ position: 'absolute' }} />
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            style={[
+              styles.filterBtn, 
+              isDarkMode && { backgroundColor: '#1E1E24', borderRadius: 10 }
+            ]} 
+            onPress={() => setShowPicker(true)}
+          >
+            {!isDarkMode && (
+              <FundoBtnFiltro width={170} height={42} style={{ position: 'absolute' }} />
+            )}
             <View style={styles.filterBtnContent}>
               {hasFilteredDate ? (
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1C2434' }}>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>
                   {date.toLocaleDateString('pt-BR')}
                 </Text>
               ) : (
-                <SelecionarDataTexto width={110} height={16} />
+                isDarkMode ? (
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>
+                    Selecionar data
+                  </Text>
+                ) : (
+                  <SelecionarDataTexto width={110} height={16} />
+                )
               )}
-              <SetaBaixo width={15} height={10} />
+              <SetaBaixo 
+                width={15} 
+                height={10} 
+                color={isDarkMode ? '#FFE082' : '#1C2434'} 
+              />
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Totals Summary Card (Branco-neve) */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryTotalRow}>
-            <Text style={styles.summaryTotalLabel}>Venda Total do Dia</Text>
-            <Text style={styles.summaryTotalValue}>{formatCurrency(totalGeral)}</Text>
+        <View style={[styles.summaryCard, { backgroundColor: isDarkMode ? colors.cardBackground : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}>
+          <View style={[styles.summaryTotalRow, { borderBottomColor: isDarkMode ? '#3E3E4A' : '#FFFFFF' }]}>
+            <Text style={[styles.summaryTotalLabel, { color: colors.textDark }]}>Venda Total do Dia</Text>
+            <Text style={[styles.summaryTotalValue, { color: colors.textDark }]}>{formatCurrency(totalGeral)}</Text>
           </View>
 
           <View style={styles.summaryRow}>
@@ -190,6 +219,7 @@ export default function AdminSalesHistoryScreen() {
             mode="date"
             display="default"
             onChange={onChangeDate}
+            themeVariant={isDarkMode ? 'dark' : 'light'}
           />
         )}
 
@@ -197,28 +227,28 @@ export default function AdminSalesHistoryScreen() {
         {loading ? (
           <ActivityIndicator size="large" color="#339914" style={{ marginTop: 20 }} />
         ) : orders.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhuma venda registrada neste período.</Text>
+          <Text style={[styles.emptyText, { color: colors.textDark }]}>Nenhuma venda registrada neste período.</Text>
         ) : (
           orders.map((order, index) => {
             const firstItem = order.order_items?.[0];
             const productImg = firstItem?.products?.image_url;
 
             return (
-              <View key={order.id} style={styles.orderCard}>
+              <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>
                 
                 {/* Coluna 1: Foto do produto */}
                 <View style={styles.colContainer}>
-                  <View style={styles.productImageContainer}>
+                  <View style={[styles.productImageContainer, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                     {productImg ? (
                       <Image source={{ uri: productImg }} style={styles.productImage} resizeMode="contain" />
                     ) : (
-                      <View style={styles.placeholderImg} />
+                      <View style={[styles.placeholderImg, { backgroundColor: isDarkMode ? '#2E2E38' : '#E0E0E0' }]} />
                     )}
                   </View>
                 </View>
 
                 {/* Separador 1 */}
-                <View style={styles.cardSeparator} />
+                <View style={[styles.cardSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }]} />
 
                 {/* Coluna 2: Forma de pagamento */}
                 <View style={styles.colContainer}>
@@ -227,7 +257,7 @@ export default function AdminSalesHistoryScreen() {
                 </View>
 
                 {/* Separador 2 */}
-                <View style={styles.cardSeparator} />
+                <View style={[styles.cardSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }]} />
 
                 {/* Coluna 3: Valor total da venda */}
                 <View style={styles.colContainer}>
@@ -236,7 +266,7 @@ export default function AdminSalesHistoryScreen() {
                 </View>
 
                 {/* Separador 3 */}
-                <View style={styles.cardSeparator} />
+                <View style={[styles.cardSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }]} />
 
                 {/* Coluna 4: Ver Resumo */}
                 <View style={styles.colContainer}>
@@ -257,39 +287,39 @@ export default function AdminSalesHistoryScreen() {
 
       {/* ========== BARRA INFERIOR (GERENCIAR ATIVO) ========== */}
       <View style={styles.tabBarOuter}>
-        <View style={styles.tabBarInner}>
+        <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Home' })}>
             <View style={styles.iconBgInactive}>
-              <HomeIcon8 width={32} height={32} />
+              <HomeIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <MenuLabel8 width={33} height={9} />
+            <MenuLabel8 width={33} height={9} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Mapa' })}>
             <View style={styles.iconBgInactive}>
-              <MapIcon8 width={32} height={32} />
+              <MapIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <MapaLabel8 width={32} height={12} />
+            <MapaLabel8 width={32} height={12} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
           
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Gerenciar' })}>
             <View style={styles.iconBgInactive}>
-              <ManageIcon8 width={32} height={32} />
+              <ManageIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <GerenciarLabel8 width={55} height={10} />
+            <GerenciarLabel8 width={55} height={10} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
 
-          <View style={styles.tabSeparator} />
+          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('AdminTabs', { screen: 'Opções' })}>
             <View style={styles.iconBgInactive}>
-              <GearIcon8 width={32} height={32} />
+              <GearIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />
             </View>
-            <OpcoesLabel8 width={42} height={12} />
+            <OpcoesLabel8 width={42} height={12} fill={iconColorInactive} stroke={iconColorInactive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -407,7 +437,7 @@ const styles = StyleSheet.create({
   verResumoText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#FFE082',
     textAlign: 'center',
   },
 

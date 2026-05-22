@@ -13,6 +13,7 @@ import { useUserMenu } from '../contexts/UserMenuContext';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import { AuthContext } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 import MenuInicialTitle from '../assets/tela2/header/Menu inicial.svg';
 import OpcoesTitle from '../assets/tela4/parte superior/Opções.svg';
@@ -20,8 +21,8 @@ import VerPedidosTitle from '../assets/tela5/parte superior/Ver pedidos.svg';
 import HistoricoVendasTitle from '../assets/tela6/parte superior/Histórico de vendas.svg';
 import GerenciarProdutosTitle from '../assets/tela7/parte superior/Adicionar/Remover/Gerenciar produtos.svg';
 import RegistrarProdutoTitle from '../assets/tela8/parte superior/Registrar produto.svg';
-import BarraPesquisaSVG from '../assets/tela7/parte superior/Adicionar/Remover/Barra de Pesquisa.svg';
 import PersonIcon from '../assets/tela2/header/Person Icon.svg';
+import { Feather } from '@expo/vector-icons';
 import AdmIcon from '../assets/tela2/header/Adm.svg';
 
 // SVGs Admin Tela 2
@@ -36,6 +37,7 @@ interface AdminHeaderProps {
 export default function AdminHeader({ title = 'home', searchValue = '', onSearchChange }: AdminHeaderProps) {
   const { toggleMenu } = useUserMenu();
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
   const [localSearch, setLocalSearch] = React.useState(searchValue);
   const { user } = React.useContext(AuthContext);
   const [photoUri, setPhotoUri] = React.useState<string | null>(null);
@@ -123,7 +125,7 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
   };
 
   return (
-    <View style={styles.headerContainer}>
+    <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground }]}>
       {/* Mini Logo */}
       <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Home')}>
         <MiniLogo width={36} height={36} />
@@ -146,20 +148,21 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
       {/* Right side: Adm text or Search Bar + Person Icon */}
       <View style={styles.rightGroup}>
         {(title === 'gerenciar' || title === 'registrar_produto' || title === 'editar_produto') ? (
-          <View style={styles.searchBarContainer}>
-            {/* SVG as background - shows magnifying glass + placeholder text */}
-            <BarraPesquisaSVG 
-              width={165} 
-              height={36} 
-              style={{ position: 'absolute', left: 0, top: 0 }} 
-            />
-            {/* Invisible TextInput on top - no placeholder since SVG already has it */}
-            {/* When user types, the text overlays the SVG placeholder */}
+          <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#2E2E38' : '#F2F2F2' }]}>
+            <TouchableOpacity onPress={triggerSearch} activeOpacity={0.7}>
+              <Feather 
+                name="search" 
+                size={16} 
+                color={isDarkMode ? '#FFFFFF' : '#1C2434'} 
+                style={{ marginRight: 4 }}
+              />
+            </TouchableOpacity>
             <TextInput 
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}
               value={localSearch}
               onChangeText={setLocalSearch}
-              placeholderTextColor="transparent"
+              placeholder="Pesquisar..."
+              placeholderTextColor={isDarkMode ? '#8E8E93' : '#919191'}
               returnKeyType="search"
               onSubmitEditing={triggerSearch}
             />
@@ -229,21 +232,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  searchBarContainer: {
-    width: 165,
+  searchBar: {
+    flex: 1,
     height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 8,
     marginRight: 8,
-    justifyContent: 'center',
-    position: 'relative',
   },
   searchInput: {
     flex: 1,
     height: 36,
-    paddingLeft: 30,
-    paddingRight: 10,
-    paddingVertical: 0,
     fontSize: 13,
-    color: '#333',
-    backgroundColor: 'transparent',
+    paddingVertical: 0,
   },
 });

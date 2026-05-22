@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Admin Screens
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
@@ -132,9 +133,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   const focusedOptions = descriptors[state.routes[state.index].key].options;
   if (focusedOptions.tabBarVisible === false) return null;
 
+  const { isDarkMode } = useTheme();
+
   return (
     <View style={styles.tabBarOuter}>
-      <View style={styles.tabBarInner}>
+      <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const activeTab = state.routes[state.index].name;
@@ -161,21 +164,43 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           const { Icon, Label, labelW, labelH } = config;
 
           const activeBgStyle = isTabActive
-            ? { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+            ? (isDarkMode
+                ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+                : { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268', width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const }
+              )
             : { width: 51, height: 41, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const };
+
+          const iconColor = isDarkMode ? (isTabActive ? '#FFD700' : '#FFFFFF') : undefined;
 
           return (
             <React.Fragment key={route.key}>
-              {index > 0 && <View style={styles.tabSeparator} />}
+              {index > 0 && (
+                <View 
+                  style={[
+                    styles.tabSeparator, 
+                    { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }
+                  ]} 
+                />
+              )}
               <TouchableOpacity
                 onPress={onPress}
                 style={styles.tabItem}
                 activeOpacity={0.7}
               >
                 <View style={activeBgStyle}>
-                  <Icon width={32} height={32} />
+                  <Icon 
+                    width={32} 
+                    height={32} 
+                    fill={iconColor} 
+                    stroke={iconColor} 
+                  />
                 </View>
-                <Label width={labelW} height={labelH} />
+                <Label 
+                  width={labelW} 
+                  height={labelH} 
+                  fill={iconColor} 
+                  stroke={iconColor} 
+                />
               </TouchableOpacity>
             </React.Fragment>
           );

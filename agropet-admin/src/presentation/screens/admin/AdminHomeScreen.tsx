@@ -6,30 +6,23 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
+  Text,
 } from 'react-native';
 import Colors from '../../theme/colors';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// SVGs Admin Tela 2
-import BemVindoAdm from '../../assets/tela2/BemVindoAdm.svg';
-import GerenciarTitle from '../../assets/tela2/GerenciarTitle.svg';
-import FundoPainel from '../../assets/tela2/cards/FundoPainel.svg';
-import PainelVendasText from '../../assets/tela2/cards/PainelVendas.svg';
-import FundoHistorico from '../../assets/tela2/cards/FundoHistorico.svg';
-import HistoricoVendasText from '../../assets/tela2/cards/HistoricoVendas.svg';
-import FundoPedidos from '../../assets/tela2/dropdown/FundoPedidos.svg';
-import VerPedidosText from '../../assets/tela2/dropdown/VerPedidos.svg';
-import FundoSair from '../../assets/tela2/dropdown/FundoSair.svg';
-import SairBtn from '../../assets/tela2/dropdown/Sair.svg';
+// SVGs Admin Tela 2 (Substituídos por elementos nativos de alto desempenho)
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function AdminHomeScreen() {
   const { signOut } = React.useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -40,8 +33,8 @@ export default function AdminHomeScreen() {
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar backgroundColor="#1C2434" barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
       <AdminHeader />
       
       {/* Scrollable Content */}
@@ -52,68 +45,64 @@ export default function AdminHomeScreen() {
       >
         {/* Welcome Message */}
         <View style={styles.welcomeWrapper}>
-          <BemVindoAdm width={SCREEN_WIDTH * 0.85} height={60} />
+          <Text style={[styles.welcomeText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+            Bem-vindo, Administrador!
+          </Text>
         </View>
 
         {/* Gerenciar Section Title */}
         <View style={styles.sectionTitleWrapper}>
-          <GerenciarTitle width={135} height={30} />
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+            Gerenciar:
+          </Text>
         </View>
 
         {/* Sales Panel Card */}
         <TouchableOpacity 
-          style={styles.cardButton} 
+          style={[
+            styles.cardButton, 
+            { backgroundColor: isDarkMode ? colors.cardBackground : '#1C2434' }
+          ]} 
           activeOpacity={0.8}
           onPress={() => navigation.navigate('AdminOrdersScreen')}
         >
-          <View style={styles.cardStack}>
-            <FundoPainel width={SCREEN_WIDTH * 0.85} height={115} />
-            <View style={styles.cardTextOverlay}>
-              <PainelVendasText width={240} height={85} />
-            </View>
-          </View>
+          <Text style={styles.cardText}>Painel de Vendas</Text>
         </TouchableOpacity>
 
         {/* Sales History Card */}
         <TouchableOpacity 
-          style={styles.cardButton} 
+          style={[
+            styles.cardButton, 
+            { backgroundColor: isDarkMode ? colors.cardBackground : '#1C2434' }
+          ]} 
           activeOpacity={0.8}
           onPress={() => navigation.navigate('AdminSalesHistoryScreen')}
         >
-          <View style={styles.cardStack}>
-            <FundoHistorico width={SCREEN_WIDTH * 0.85} height={115} />
-            <View style={styles.cardTextOverlay}>
-              <HistoricoVendasText width={260} height={95} />
-            </View>
-          </View>
+          <Text style={styles.cardText}>Histórico de Vendas</Text>
         </TouchableOpacity>
 
         {/* Ver Pedidos Card */}
         <TouchableOpacity 
-          style={styles.cardButton} 
+          style={[
+            styles.cardButton, 
+            { backgroundColor: isDarkMode ? colors.cardBackground : '#1C2434' }
+          ]} 
           activeOpacity={0.8}
           onPress={() => navigation.navigate('AdminOrdersScreen')}
         >
-          <View style={styles.cardStack}>
-            <FundoPedidos width={SCREEN_WIDTH * 0.85} height={115} />
-            <View style={styles.cardTextOverlay}>
-              <VerPedidosText width={200} height={75} />
-            </View>
-          </View>
+          <Text style={styles.cardText}>Ver Pedidos</Text>
         </TouchableOpacity>
 
         {/* Logout Button (Red) */}
         <TouchableOpacity 
-          style={[styles.cardButton, { marginTop: 5 }]} 
+          style={[
+            styles.cardButton, 
+            { backgroundColor: '#A72424', marginTop: 5 }
+          ]} 
           activeOpacity={0.8}
           onPress={handleLogout}
         >
-          <View style={styles.cardStack}>
-            <FundoSair width={SCREEN_WIDTH * 0.85} height={115} />
-            <View style={styles.cardTextOverlay}>
-              <SairBtn width={70} height={35} />
-            </View>
-          </View>
+          <Text style={styles.cardText}>Sair</Text>
         </TouchableOpacity>
         
         {/* Padding for bottom tab bar if needed, but absolute pos usually covers it */}
@@ -148,17 +137,32 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   cardButton: {
-    marginBottom: 20,
+    width: SCREEN_WIDTH * 0.85,
+    height: 115,
     borderRadius: 20,
-    overflow: 'hidden',
-  },
-  cardStack: {
-    alignItems: 'center',
+    marginBottom: 20,
     justifyContent: 'center',
-  },
-  cardTextOverlay: {
-    position: 'absolute',
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  welcomeText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  cardText: {
+    color: '#FFFFFF',
+    fontSize: 25,
+    fontWeight: 'bold',
   },
 });
