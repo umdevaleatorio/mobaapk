@@ -176,7 +176,8 @@ Novas e inovadoras mecânicas de comportamento visual e de negócios estão cata
 
 ---
 
-<img src="updates-banner.svg?v=1.3" width="500" alt="AgroPet Updates" />
+<img src="updates-banner.svg?v=1.4" width="500" alt="AgroPet Updates" />
+
 
 
 
