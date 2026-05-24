@@ -635,13 +635,13 @@ export default function AdminDashboardScreen() {
         <View style={styles.metricsGrid}>
           <View style={[styles.metricCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#F5F6FA', borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}>
             <Text style={styles.metricLabel}>Ticket Médio</Text>
-            <Text style={[styles.metricValue, { color: '#339914' }]}>
+            <Text style={[styles.metricValue, { color: ticketMedio === 0 ? '#919191' : '#339914' }]}>
               {formatCurrency(ticketMedio)}
             </Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#F5F6FA', borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}>
             <Text style={styles.metricLabel}>Qtd. Pedidos</Text>
-            <Text style={[styles.metricValue, { color: isDarkMode ? '#FFE082' : '#00BFA5' }]}>
+            <Text style={[styles.metricValue, { color: volumeVendas === 0 ? '#FF5252' : (isDarkMode ? '#FFE082' : '#00BFA5') }]}>
               {volumeVendas}
             </Text>
           </View>
