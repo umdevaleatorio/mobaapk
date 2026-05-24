@@ -320,6 +320,7 @@ export default function AdminSettingsScreen() {
   const themeIconScale = React.useRef(new Animated.Value(1)).current;
   const notifIconRotate = React.useRef(new Animated.Value(0)).current;
   const permIconScale = React.useRef(new Animated.Value(1)).current;
+  const greetingIconRotate = React.useRef(new Animated.Value(0)).current;
 
   // Spring switch animation triggers
   useEffect(() => {
@@ -368,6 +369,11 @@ export default function AdminSettingsScreen() {
     outputRange: ['0deg', '-20deg', '20deg', '-15deg', '15deg', '0deg'],
   });
 
+  const greetingRotateInterpolate = greetingIconRotate.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: ['0deg', '-20deg', '20deg', '-10deg', '0deg'],
+  });
+
   // Sincronizar status do e-mail com pendências do Supabase
   useEffect(() => {
     if (user?.new_email) {
@@ -405,6 +411,13 @@ export default function AdminSettingsScreen() {
   }, []);
 
   const handleToggleGreeting = async () => {
+    greetingIconRotate.setValue(0);
+    Animated.timing(greetingIconRotate, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
     const newValue = !showGreeting;
     setShowGreeting(newValue);
     try {
@@ -944,13 +957,13 @@ export default function AdminSettingsScreen() {
             {/* Saudação e Horário */}
             <View style={{ gap: 4 }}>
               <View style={styles.toggleRow}>
-                <View style={styles.iconBoxAnim}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: greetingRotateInterpolate }] }]}>
                   <Feather
                     name="clock"
                     size={22}
                     color={isDarkMode ? '#FFC107' : '#EA841E'}
                   />
-                </View>
+                </Animated.View>
                 <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>Saudação e Horário</Text>
                 <View style={styles.toggleSpacer} />
                 <CustomSwitch

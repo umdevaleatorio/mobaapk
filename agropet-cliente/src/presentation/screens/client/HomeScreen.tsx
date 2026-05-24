@@ -497,7 +497,7 @@ export default function HomeScreen() {
             {greeting}
           </Text>
           <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#25BE36' : '#FF3B30' }]}>
-            {shopStatus.isOpen ? shopStatus.countdownText : `Atualmente estamos fechados. ${shopStatus.countdownText}`}
+            {shopStatus.isOpen ? shopStatus.countdownText : `Atualmente estamos fechados.\n${shopStatus.countdownText}`}
           </Text>
         </Animated.View>
       )}

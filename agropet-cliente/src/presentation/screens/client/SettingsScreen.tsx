@@ -201,6 +201,7 @@ export default function SettingsScreen() {
   const themeIconScale = React.useRef(new Animated.Value(1)).current;
   const notifIconRotate = React.useRef(new Animated.Value(0)).current;
   const permIconScale = React.useRef(new Animated.Value(1)).current;
+  const greetingIconRotate = React.useRef(new Animated.Value(0)).current;
 
   // Dynamic switch transition triggers
   React.useEffect(() => {
@@ -238,6 +239,11 @@ export default function SettingsScreen() {
   const notifRotateInterpolate = notifIconRotate.interpolate({
     inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
     outputRange: ['0deg', '-20deg', '20deg', '-15deg', '15deg', '0deg'],
+  });
+
+  const greetingRotateInterpolate = greetingIconRotate.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: ['0deg', '-20deg', '20deg', '-10deg', '0deg'],
   });
 
   const userEmail = user?.new_email || user?.email || 'meuemail@gmail.com';
@@ -278,6 +284,13 @@ export default function SettingsScreen() {
   }, []);
 
   const handleToggleGreeting = async () => {
+    greetingIconRotate.setValue(0);
+    Animated.timing(greetingIconRotate, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
     const newValue = !showGreeting;
     setShowGreeting(newValue);
     try {
@@ -780,13 +793,13 @@ export default function SettingsScreen() {
           {/* Saudação e Horário */}
           <View style={{ gap: 4 }}>
             <View style={styles.toggleRow}>
-              <View style={styles.iconBoxAnim}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: greetingRotateInterpolate }] }]}>
                 <Feather
                   name="clock"
                   size={22}
                   color={isDarkMode ? '#FFC107' : '#EA841E'}
                 />
-              </View>
+              </Animated.View>
               <Text style={styles.optionLabel}>Saudação e Horário</Text>
               <View style={styles.toggleSpacer} />
               <CustomSwitch
