@@ -11,6 +11,8 @@ import {
   Image,
   Modal,
   Alert,
+  RefreshControl,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
@@ -89,6 +91,8 @@ export default function ProfileScreen() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [showAddressValidationErrors, setShowAddressValidationErrors] = useState(false);
+  const [deliveryActive, setDeliveryActive] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const firstEmptyField = (() => {
     if (!rua.trim()) return 'rua';
@@ -98,12 +102,45 @@ export default function ProfileScreen() {
     return null;
   })();
 
-  // Validação dinâmica ao digitar: ativa o aviso apenas se o usuário digitar algo e deixar campos em branco
-  React.useEffect(() => {
-    const hasAny = rua.trim() || bairro.trim() || cep.trim() || numero.trim();
-    if (hasAny) {
-      setShowAddressValidationErrors(true);
+  // Animação de fade para erros de endereço
+  const addressErrorOpacity = React.useRef(new Animated.Value(0)).current;
+  const errorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAddressError = React.useCallback(() => {
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
     }
+    setShowAddressValidationErrors(true);
+    Animated.timing(addressErrorOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    errorTimeoutRef.current = setTimeout(() => {
+      Animated.timing(addressErrorOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(({ finished }: any) => {
+        if (finished) {
+          setShowAddressValidationErrors(false);
+        }
+      });
+    }, 8000);
+  }, [addressErrorOpacity]);
+
+  // Limpar timeout ao desmontar
+  React.useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Reset do locationConfirmed quando o endereço muda
+  React.useEffect(() => {
     if (profileLoadedRef.current) {
       setLocationConfirmed(false);
     }
@@ -115,6 +152,9 @@ export default function ProfileScreen() {
   const cepRef = React.useRef<TextInput>(null);
   const numeroRef = React.useRef<TextInput>(null);
   const profileLoadedRef = React.useRef(false);
+  const autoValidatingRef = React.useRef(false);
+  const lastAttemptedAddressRef = React.useRef('');
+
 
   // Chave curta e única por usuário
   const avatarKey = user ? `av_${user.id.slice(0, 8)}` : 'av_guest';
@@ -154,58 +194,253 @@ export default function ProfileScreen() {
     supabase.auth.refreshSession().catch(() => {});
   }, []);
 
+  const fetchDeliveryStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('delivery_active')
+        .maybeSingle();
+      if (data && !error && data.delivery_active !== undefined) {
+        setDeliveryActive(data.delivery_active);
+        // Sincronizar parent ClientTabs
+        if (typeof (global as any).refreshDeliveryTabs === 'function') {
+          (global as any).refreshDeliveryTabs();
+        }
+      }
+    } catch (e) {
+      console.log('Error fetching delivery active in profile:', e);
+    }
+  };
+
+  const fetchProfile = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('name, username, email, phone, rua, bairro, cep, numero, lat, lng, location_confirmed')
+        .eq('id', user.id)
+        .single();
+      
+      if (data) {
+        setNome(data.name || '');
+        setUsuario(data.username || '');
+        setEmail(data.email || user.email || '');
+        setPhone(data.phone || '');
+        if (data.phone) setPhoneStatus('alterar');
+        
+        // Prevenir que o carregamento inicial resete a confirmação de localização
+        profileLoadedRef.current = false;
+        
+        setRua(data.rua || '');
+        setBairro(data.bairro || '');
+        setCep(data.cep || '');
+        setNumero(data.numero || '');
+        if (data.lat && data.lng) {
+          setLat(data.lat);
+          setLng(data.lng);
+        } else {
+          setLat(null);
+          setLng(null);
+        }
+        setLocationConfirmed(data.location_confirmed || false);
+
+        // Se o endereço estiver incompleto no DB, ativa as bordas vermelhas nos campos vazios
+        const hasAny = data.rua || data.bairro || data.cep || data.numero;
+        const hasEmpty = !data.rua || !data.bairro || !data.cep || !data.numero;
+        if (hasAny && hasEmpty) {
+          setShowAddressValidationErrors(true);
+        } else {
+          setShowAddressValidationErrors(false);
+        }
+
+        setTimeout(() => {
+          profileLoadedRef.current = true;
+        }, 150);
+      }
+    } catch (err) {
+      console.log('Erro ao carregar perfil', err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchProfile(),
+      fetchDeliveryStatus()
+    ]);
+    setRefreshing(false);
+  };
+
+  // Sincronizar status de frete ativo/inativo na barra inferior
+  React.useEffect(() => {
+    fetchDeliveryStatus();
+
+    const channel = supabase
+      .channel('store_settings_profile_tabs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).delivery_active !== undefined) {
+            setDeliveryActive((payload.new as any).delivery_active);
+            // Sincronizar parent ClientTabs
+            if (typeof (global as any).refreshDeliveryTabs === 'function') {
+              (global as any).refreshDeliveryTabs();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Carregar dados do perfil (Nome, Endereço, Email, Phone, Username) do Supabase
   React.useEffect(() => {
-    if (!user?.id) return;
-    const fetchProfile = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('name, username, email, phone, rua, bairro, cep, numero, lat, lng, location_confirmed')
-          .eq('id', user.id)
-          .single();
-        
-        if (data) {
-          setNome(data.name || '');
-          setUsuario(data.username || '');
-          setEmail(data.email || user.email || '');
-          setPhone(data.phone || '');
-          if (data.phone) setPhoneStatus('alterar');
-          
-          // Prevenir que o carregamento inicial resete a confirmação de localização
-          profileLoadedRef.current = false;
-          
-          setRua(data.rua || '');
-          setBairro(data.bairro || '');
-          setCep(data.cep || '');
-          setNumero(data.numero || '');
-          if (data.lat && data.lng) {
-            setLat(data.lat);
-            setLng(data.lng);
-          }
-          setLocationConfirmed(data.location_confirmed || false);
-
-          // Se o endereço estiver incompleto no DB, ativa as bordas vermelhas nos campos vazios
-          const hasAny = data.rua || data.bairro || data.cep || data.numero;
-          const hasEmpty = !data.rua || !data.bairro || !data.cep || !data.numero;
-          if (hasAny && hasEmpty) {
-            setShowAddressValidationErrors(true);
-          }
-
-          setTimeout(() => {
-            profileLoadedRef.current = true;
-          }, 150);
-        }
-      } catch (err) {
-        console.log('Erro ao carregar perfil', err);
-      }
-    };
     fetchProfile();
   }, [user?.id]);
 
+  const autoValidateAddressIfPossible = async (
+    currentRua: string,
+    currentBairro: string,
+    currentCep: string,
+    currentNumero: string
+  ) => {
+    if (!user || autoValidatingRef.current) return;
+    if (!deliveryActive) return;
+    if (locationConfirmed) return;
+    if (!currentRua.trim() || !currentBairro.trim() || !currentCep.trim() || !currentNumero.trim()) return;
+
+    autoValidatingRef.current = true;
+    try {
+      const query = `${currentRua}, ${currentNumero}, ${currentBairro}, Lambari, Minas Gerais, Brasil`;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=br&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'AgropetAppCliente/1.0',
+            'Accept-Language': 'pt-BR,pt;q=0.9',
+          }
+        }
+      );
+      
+      let resolvedLat: number | null = null;
+      let resolvedLng: number | null = null;
+
+      const data = await response.json();
+      if (data && data.length > 0) {
+        resolvedLat = parseFloat(data[0].lat);
+        resolvedLng = parseFloat(data[0].lon);
+      } else {
+        const fallbackQuery = `${currentRua}, ${currentBairro}, Lambari, Minas Gerais, Brasil`;
+        const fallbackResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&limit=1&countrycodes=br&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'AgropetAppCliente/1.0',
+              'Accept-Language': 'pt-BR,pt;q=0.9',
+            }
+          }
+        );
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData && fallbackData.length > 0) {
+          resolvedLat = parseFloat(fallbackData[0].lat);
+          resolvedLng = parseFloat(fallbackData[0].lon);
+        }
+      }
+
+      if (resolvedLat && resolvedLng) {
+        let storeLat = -21.9765;
+        let storeLng = -45.3469;
+        let maxRadius = 17;
+
+        try {
+          const { data: storeLoc, error: storeLocError } = await supabase
+            .from('agropet_store_location')
+            .select('latitude, longitude')
+            .eq('id', 1)
+            .single();
+          if (storeLoc && !storeLocError) {
+            storeLat = storeLoc.latitude;
+            storeLng = storeLoc.longitude;
+          }
+        } catch (e) {
+          console.log('Error loading store location in auto-save:', e);
+        }
+
+        try {
+          const { data: settings, error: settingsError } = await supabase
+            .from('store_settings')
+            .select('delivery_radius_km')
+            .maybeSingle();
+          if (settings && !settingsError && settings.delivery_radius_km !== null) {
+            maxRadius = settings.delivery_radius_km;
+          }
+        } catch (e) {
+          console.log('Error loading settings in auto-save:', e);
+        }
+
+        const distance = getDistanceKm(storeLat, storeLng, resolvedLat, resolvedLng);
+        if (distance > maxRadius) {
+          return;
+        }
+
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            lat: resolvedLat,
+            lng: resolvedLng,
+            location_confirmed: true
+          })
+          .eq('id', user.id);
+
+        if (!updateError) {
+          setLat(resolvedLat);
+          setLng(resolvedLng);
+          setLocationConfirmed(true);
+          
+          Alert.alert(
+            'Oba! Frete Reativado 📍',
+            'Seu endereço foi localizado automaticamente no mapa agora que o frete está ativo!\n\nTodos os recursos de mapa, traçado de rotas e acompanhamento de pedidos foram liberados para você! 🏠🗺️',
+            [
+              {
+                text: 'Ver no Mapa',
+                onPress: () => {
+                  navigation.navigate('ClientTabs', { screen: 'Mapa' });
+                }
+              },
+              { text: 'OK' }
+            ]
+          );
+        }
+      }
+    } catch (err) {
+      console.log('Erro na auto-validação de endereço:', err);
+    } finally {
+      autoValidatingRef.current = false;
+    }
+  };
+
+  // Monitorar deliveryActive e profileLoadedRef para auto-validação de endereço
+  React.useEffect(() => {
+    if (deliveryActive && profileLoadedRef.current && !locationConfirmed) {
+      const hasAllFields = rua.trim() && bairro.trim() && cep.trim() && numero.trim();
+      if (hasAllFields) {
+        const addrStr = `${rua.trim()}|${bairro.trim()}|${cep.trim()}|${numero.trim()}`;
+        if (lastAttemptedAddressRef.current !== addrStr) {
+          lastAttemptedAddressRef.current = addrStr;
+          autoValidateAddressIfPossible(rua, bairro, cep, numero);
+        }
+      }
+    }
+  }, [deliveryActive, locationConfirmed, rua, bairro, cep, numero]);
+
+
   // Salvar Nome no Supabase com Debounce
   React.useEffect(() => {
-    if (!user) return;
+    if (!user || !profileLoadedRef.current) return;
     const delay = setTimeout(() => {
       supabase.from('users').update({ name: nome }).eq('id', user.id).then();
     }, 1000);
@@ -214,19 +449,17 @@ export default function ProfileScreen() {
 
   // Salvar Endereço, Coordenadas e Confirmação no Supabase com Debounce
   React.useEffect(() => {
-    if (!user) return;
+    if (!user || !profileLoadedRef.current) return;
     const delay = setTimeout(() => {
       const updateData: any = { 
         rua, 
         bairro, 
         cep, 
         numero,
-        location_confirmed: locationConfirmed 
+        location_confirmed: locationConfirmed,
+        lat: lat,
+        lng: lng
       };
-      if (lat && lng) {
-        updateData.lat = lat;
-        updateData.lng = lng;
-      }
       supabase.from('users').update(updateData).eq('id', user.id).then();
     }, 1000);
     return () => clearTimeout(delay);
@@ -322,7 +555,7 @@ export default function ProfileScreen() {
 
   const handleSendAddress = async () => {
     if (!rua.trim() || !bairro.trim() || !cep.trim() || !numero.trim()) {
-      setShowAddressValidationErrors(true);
+      triggerAddressError();
       return;
     }
 
@@ -501,6 +734,7 @@ export default function ProfileScreen() {
       Alert.alert('Erro', 'Não foi possível salvar o endereço.');
     } else {
       setLocationConfirmed(confirmLocation);
+      setShowAddressValidationErrors(false);
       if (confirmLocation) {
         Alert.alert(
           'Endereço Enviado!',
@@ -728,7 +962,13 @@ export default function ProfileScreen() {
         onSearchChange={() => {}} 
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
             
           <View style={styles.profileHeaderRow}>
             <View style={styles.photoContainer}>
@@ -857,6 +1097,7 @@ export default function ProfileScreen() {
                     locationConfirmed ? styles.enviarBtnConfirmed : styles.enviarBtnActive
                   ]}
                   onPress={handleSendAddress}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.enviarBtnText}>
                     {locationConfirmed ? '✓ Enviado' : 'Enviar'}
@@ -884,9 +1125,11 @@ export default function ProfileScreen() {
                        <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                      </TouchableOpacity>
                  </View>
-                 {showAddressValidationErrors && firstEmptyField === 'rua' && (
-                    <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
-                 )}
+                  {showAddressValidationErrors && firstEmptyField === 'rua' && (
+                     <Animated.View style={{ opacity: addressErrorOpacity }}>
+                       <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                     </Animated.View>
+                  )}
                  {/* Dropdown de sugestões */}
                  {addressSuggestions.length > 0 && (
                    <ScrollView 
@@ -927,9 +1170,11 @@ export default function ProfileScreen() {
                        <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                      </TouchableOpacity>
                  </View>
-                 {showAddressValidationErrors && firstEmptyField === 'bairro' && (
-                    <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
-                 )}
+                  {showAddressValidationErrors && firstEmptyField === 'bairro' && (
+                     <Animated.View style={{ opacity: addressErrorOpacity }}>
+                       <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                     </Animated.View>
+                  )}
               </View>
 
               {/* CEP e N° */}
@@ -953,9 +1198,11 @@ export default function ProfileScreen() {
                            <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                          </TouchableOpacity>
                      </View>
-                     {showAddressValidationErrors && firstEmptyField === 'cep' && (
-                        <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
-                     )}
+                      {showAddressValidationErrors && firstEmptyField === 'cep' && (
+                         <Animated.View style={{ opacity: addressErrorOpacity }}>
+                           <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                         </Animated.View>
+                      )}
                  </View>
                  <View style={[styles.addressFieldGroup, { flex: 1 }]}>
                      <Text style={styles.addressLabel}>N°</Text>
@@ -977,9 +1224,11 @@ export default function ProfileScreen() {
                            <Text style={[styles.alterarLinkAddr, { color: isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                          </TouchableOpacity>
                      </View>
-                     {showAddressValidationErrors && firstEmptyField === 'numero' && (
-                        <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
-                     )}
+                      {showAddressValidationErrors && firstEmptyField === 'numero' && (
+                         <Animated.View style={{ opacity: addressErrorOpacity }}>
+                           <Text style={styles.addressErrorText}>Preencha todos os campos para continuar</Text>
+                         </Animated.View>
+                      )}
                  </View>
               </View>
 
@@ -1000,13 +1249,18 @@ export default function ProfileScreen() {
             <MenuLabel8 width={33} height={9} />
           </TouchableOpacity>
           <View style={styles.tabSeparator} />
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={styles.iconBgInactive}>
-              <MapIcon8 width={32} height={32} />
-            </View>
-            <MapaLabel8 width={32} height={12} />
-          </TouchableOpacity>
-          <View style={styles.tabSeparator} />
+
+          {deliveryActive && (
+            <>
+              <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
+                <View style={styles.iconBgInactive}>
+                  <MapIcon8 width={32} height={32} />
+                </View>
+                <MapaLabel8 width={32} height={12} />
+              </TouchableOpacity>
+              <View style={styles.tabSeparator} />
+            </>
+          )}
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
             <View style={styles.iconBgInactive}>
               <CartIcon8 width={32} height={32} />

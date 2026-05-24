@@ -47,6 +47,43 @@ export default function PaymentScreen({ navigation }: any) {
   const [paymentMethod, setPaymentMethod] = useState('PIX'); 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deliveryActive, setDeliveryActive] = useState(true);
+
+  // Sincronizar status de frete ativo/inativo na barra inferior
+  React.useEffect(() => {
+    const fetchDeliveryStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('delivery_active')
+          .maybeSingle();
+        if (data && !error && data.delivery_active !== undefined) {
+          setDeliveryActive(data.delivery_active);
+        }
+      } catch (e) {
+        console.log('Error fetching delivery active in payment:', e);
+      }
+    };
+
+    fetchDeliveryStatus();
+
+    const channel = supabase
+      .channel('store_settings_payment_tabs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).delivery_active !== undefined) {
+            setDeliveryActive((payload.new as any).delivery_active);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const grandTotal = total;
 
@@ -259,14 +296,18 @@ export default function PaymentScreen({ navigation }: any) {
           
           <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
-              <MapIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
-            </View>
-            <MapaLabel8 width={32} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
-          </TouchableOpacity>
-          
-          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+          {deliveryActive && (
+            <>
+              <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
+                <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+                  <MapIcon8 width={32} height={32} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+                </View>
+                <MapaLabel8 width={32} height={12} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+              </TouchableOpacity>
+              
+              <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+            </>
+          )}
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
             <View style={isDarkMode ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268' }]}>

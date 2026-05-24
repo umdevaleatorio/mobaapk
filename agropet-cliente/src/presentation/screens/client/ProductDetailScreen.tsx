@@ -107,26 +107,40 @@ export default function ProductDetailScreen() {
         .neq('id', product.id);
 
       if (!error && data) {
-        const currentNameLower = product.name.toLowerCase();
+        const currentName = (product.name || '').toLowerCase();
+        const currentDesc = (product.description || '').toLowerCase();
         let matchedKeywords: string[] = [];
 
         for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-          if (keywords.some(kw => currentNameLower.includes(kw))) {
-            matchedKeywords = keywords;
-            break;
+          if (keywords.some(kw => currentName.includes(kw.toLowerCase()) || currentDesc.includes(kw.toLowerCase()))) {
+            matchedKeywords = [...matchedKeywords, ...keywords];
           }
         }
 
         let filtered = data.filter(p => {
-          const nameLower = p.name.toLowerCase();
-          return matchedKeywords.some(kw => nameLower.includes(kw));
+          const name = (p.name || '').toLowerCase();
+          const description = (p.description || '').toLowerCase();
+          return matchedKeywords.some(kw => 
+            name.includes(kw.toLowerCase()) || 
+            description.includes(kw.toLowerCase())
+          );
         });
 
         if (filtered.length === 0) {
-          const words = currentNameLower.split(' ').filter((w: string) => w.length > 3);
+          const cleanText = `${currentName} ${currentDesc}`
+            .replace(/[^\w\sà-úÀ-Ú]/g, '')
+            .toLowerCase();
+          const words = cleanText
+            .split(/\s+/)
+            .filter((w: string) => w.length > 3);
+            
           filtered = data.filter(p => {
-            const nameLower = p.name.toLowerCase();
-            return words.some((w: string) => nameLower.includes(w));
+            const name = (p.name || '').toLowerCase();
+            const description = (p.description || '').toLowerCase();
+            return words.some((w: string) => 
+              name.includes(w) || 
+              description.includes(w)
+            );
           });
         }
 

@@ -12,6 +12,7 @@ import {
   Alert,
   Animated,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { AuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -20,6 +21,7 @@ import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
@@ -84,6 +86,16 @@ export default function AdminSettingsScreen() {
   // State for radius
   const [radius, setRadius] = useState('17');
   const [isEditingRadius, setIsEditingRadius] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      checkAllPermissions(),
+      fetchRadius()
+    ]);
+    setRefreshing(false);
+  };
 
   const fetchRadius = async () => {
     try {
@@ -212,6 +224,9 @@ export default function AdminSettingsScreen() {
   // === NOTIFICATION STATES ===
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
+  // === GREETING TOGGLE STATE ===
+  const [showGreeting, setShowGreeting] = useState(true);
+
   // === PERMISSION STATES ===
   const [cameraPermission, setCameraPermission] = useState<string>('checking');
   const [galleryPermission, setGalleryPermission] = useState<string>('checking');
@@ -226,6 +241,7 @@ export default function AdminSettingsScreen() {
   // === REQUEST PERMISSION STATES ===
   const [reqPermModalVisible, setReqPermModalVisible] = useState(false);
   const [reqPermFeature, setReqPermFeature] = useState<{ key: string; name: string } | null>(null);
+  const [openedFromManager, setOpenedFromManager] = useState(false);
 
   const getFeatureReqDescription = (key: string) => {
     switch (key) {
@@ -243,13 +259,17 @@ export default function AdminSettingsScreen() {
   };
 
   const handlePressPermission = (key: string, name: string, currentStatus: string) => {
-    if (currentStatus === 'granted') {
-      setDeauthFeature({ key, name });
-      setDeauthModalVisible(true);
-    } else {
-      setReqPermFeature({ key, name });
-      setReqPermModalVisible(true);
-    }
+    setOpenedFromManager(true);
+    setShowPermissionsModal(false);
+    setTimeout(() => {
+      if (currentStatus === 'granted') {
+        setDeauthFeature({ key, name });
+        setDeauthModalVisible(true);
+      } else {
+        setReqPermFeature({ key, name });
+        setReqPermModalVisible(true);
+      }
+    }, 400);
   };
 
   const handleConfirmRequestPermission = () => {
@@ -263,6 +283,12 @@ export default function AdminSettingsScreen() {
     if (key === 'notifications') requestNotifications();
     
     setReqPermFeature(null);
+
+    if (openedFromManager) {
+      setTimeout(() => {
+        setShowPermissionsModal(true);
+      }, 600);
+    }
   };
 
   const handleConfirmDeauth = () => {
@@ -276,12 +302,19 @@ export default function AdminSettingsScreen() {
     }
     setDeauthModalVisible(false);
     setDeauthFeature(null);
+
+    if (openedFromManager) {
+      setTimeout(() => {
+        setShowPermissionsModal(true);
+      }, 600);
+    }
   };
 
   // === ANIMATION VALUES ===
   const themeSwitchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current;
   const notifSwitchAnim = React.useRef(new Animated.Value(notificationsEnabled ? 1 : 0)).current;
   const deliverySwitchAnim = React.useRef(new Animated.Value(deliveryDisabled ? 1 : 0)).current;
+  const greetingSwitchAnim = React.useRef(new Animated.Value(showGreeting ? 1 : 0)).current;
 
   const themeIconRotate = React.useRef(new Animated.Value(0)).current;
   const themeIconScale = React.useRef(new Animated.Value(1)).current;
@@ -316,6 +349,15 @@ export default function AdminSettingsScreen() {
     }).start();
   }, [deliveryDisabled]);
 
+  useEffect(() => {
+    Animated.spring(greetingSwitchAnim, {
+      toValue: showGreeting ? 1 : 0,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 12,
+    }).start();
+  }, [showGreeting]);
+
   const themeRotateInterpolate = themeIconRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
@@ -336,16 +378,41 @@ export default function AdminSettingsScreen() {
     }
   }, [user]);
 
-  // Verificar status inicial das notificações e permissões
+  // Verificar status inicial das notificações, saudações e permissões
   useEffect(() => {
     const checkInitialNotifications = async () => {
       const { status } = await Notifications.getPermissionsAsync();
       setNotificationsEnabled(status === 'granted');
     };
+    const loadGreetingSetting = async () => {
+      try {
+        const val = await SecureStore.getItemAsync('show_greeting_bar');
+        if (val === 'false') {
+          setShowGreeting(false);
+          greetingSwitchAnim.setValue(0);
+        } else {
+          setShowGreeting(true);
+          greetingSwitchAnim.setValue(1);
+        }
+      } catch (e) {
+        console.log('Erro ao ler preferência de saudação:', e);
+      }
+    };
     checkInitialNotifications();
+    loadGreetingSetting();
     checkAllPermissions();
     fetchRadius();
   }, []);
+
+  const handleToggleGreeting = async () => {
+    const newValue = !showGreeting;
+    setShowGreeting(newValue);
+    try {
+      await SecureStore.setItemAsync('show_greeting_bar', String(newValue));
+    } catch (e) {
+      console.log('Erro ao salvar preferência de saudação:', e);
+    }
+  };
 
   // ======= EMAIL ACTIONS =======
   const handleConfirmEmail = async () => {
@@ -545,6 +612,7 @@ export default function AdminSettingsScreen() {
       Alert.alert('Notificações', 'Você desativou as notificações.');
     } else {
       if (notificationsPermission !== 'granted') {
+        setOpenedFromManager(false);
         setReqPermFeature({ key: 'notifications', name: 'Notificações Push' });
         setReqPermModalVisible(true);
         return;
@@ -686,7 +754,12 @@ export default function AdminSettingsScreen() {
       {/* Header Admin */}
       <AdminHeader title="opcoes" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         {/* ========== EXTERNAL BACKGROUND ========== */}
         <View style={[styles.outerCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
 
@@ -866,6 +939,31 @@ export default function AdminSettingsScreen() {
                 animValue={notifSwitchAnim} 
                 isDarkMode={isDarkMode}
               />
+            </View>
+
+            {/* Saudação e Horário */}
+            <View style={{ gap: 4 }}>
+              <View style={styles.toggleRow}>
+                <View style={styles.iconBoxAnim}>
+                  <Feather
+                    name="clock"
+                    size={22}
+                    color={isDarkMode ? '#FFC107' : '#EA841E'}
+                  />
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>Saudação e Horário</Text>
+                <View style={styles.toggleSpacer} />
+                <CustomSwitch
+                  active={showGreeting}
+                  onPress={handleToggleGreeting}
+                  colorActive={colors.primary}
+                  animValue={greetingSwitchAnim}
+                  isDarkMode={isDarkMode}
+                />
+              </View>
+              <Text style={[styles.toggleSubtitle, { color: isDarkMode ? '#A8A8B3' : '#A2AAB8' }]}>
+                Exibe a barra de saudações e funcionamento no menu
+              </Text>
             </View>
 
             {/* Permissões */}
@@ -1274,7 +1372,14 @@ export default function AdminSettingsScreen() {
             <View style={styles.whiteModalButtons}>
               <TouchableOpacity 
                 style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} 
-                onPress={() => setDeauthModalVisible(false)}
+                onPress={() => {
+                  setDeauthModalVisible(false);
+                  if (openedFromManager) {
+                    setTimeout(() => {
+                      setShowPermissionsModal(true);
+                    }, 400);
+                  }
+                }}
               >
                 <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Não</Text>
               </TouchableOpacity>
@@ -1302,7 +1407,14 @@ export default function AdminSettingsScreen() {
             <View style={styles.whiteModalButtons}>
               <TouchableOpacity 
                 style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]} 
-                onPress={() => setReqPermModalVisible(false)}
+                onPress={() => {
+                  setReqPermModalVisible(false);
+                  if (openedFromManager) {
+                    setTimeout(() => {
+                      setShowPermissionsModal(true);
+                    }, 400);
+                  }
+                }}
               >
                 <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
               </TouchableOpacity>
@@ -1385,6 +1497,13 @@ const styles = StyleSheet.create({
   },
   toggleSpacer: {
     flex: 1,
+  },
+  toggleSubtitle: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    marginLeft: 43,
+    marginTop: -2,
+    marginBottom: 8,
   },
 
   // ===== CUSTOM SWITCH AND ANIMATED ELEMENTS =====

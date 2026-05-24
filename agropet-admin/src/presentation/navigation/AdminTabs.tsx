@@ -130,6 +130,11 @@ const tabConfigs: any = {
 };
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  // Ocultar barra inferior se o mapa estiver em modo de rastreamento (mapa expandido)
+  const activeRoute = state.routes[state.index];
+  const isMapTracking = activeRoute.name === 'Mapa' && activeRoute.params?.clientLocation;
+  if (isMapTracking) return null;
+
   const focusedOptions = descriptors[state.routes[state.index].key].options;
   if (focusedOptions.tabBarVisible === false) return null;
 

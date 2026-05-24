@@ -10,6 +10,7 @@ import {
   Keyboard,
   Alert,
   Animated,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline, Circle as MapCircle } from 'react-native-maps';
 import Svg, { Circle, Line, Path, Defs, LinearGradient, Stop, Rect, G, Ellipse } from 'react-native-svg';
@@ -591,6 +592,37 @@ export default function AdminMapScreen() {
     return unsubscribeBlur;
   }, [navigation]);
 
+  const handleGoBackFromTracking = () => {
+    // 1. Limpar timers e intervalos locais
+    if (carAnimationIntervalRef.current) {
+      clearInterval(carAnimationIntervalRef.current);
+      carAnimationIntervalRef.current = null;
+    }
+    if (trackingTimeoutRef.current) {
+      clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    if (hideCarTimeoutRef.current) {
+      clearTimeout(hideCarTimeoutRef.current);
+      hideCarTimeoutRef.current = null;
+    }
+
+    // 2. Limpar local states
+    setTrackedClient(null);
+    setRouteCoordinates([]);
+    setRemainingRoute([]);
+    setCarPosition(null);
+    setIsTracking(false);
+    setHasArrived(false);
+    setShowCar(true);
+
+    // 3. Resetar parâmetros do React Navigation
+    navigation.setParams({ clientLocation: null });
+
+    // 4. Voltar para a tela anterior
+    navigation.goBack();
+  };
+
   // Limpar timers ao desmontar o componente
   useEffect(() => {
     return () => {
@@ -695,15 +727,24 @@ export default function AdminMapScreen() {
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.white }]}>
-      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
+      <StatusBar backgroundColor={trackedClient ? 'transparent' : colors.headerBackground} barStyle="light-content" translucent={!!trackedClient} />
 
-      {/* Header Admin */}
-      <AdminHeader title="mapa" />
+      {/* Header Admin (Oculto em Rastreamento Expandido) */}
+      {!trackedClient && <AdminHeader title="mapa" />}
 
       {/* ========== MAPA (Google Maps) ========== */}
-      <View style={styles.mapContainer}>
-        {/* Floating Search Bar */}
-        <View style={styles.searchContainer}>
+      <View style={[
+        styles.mapContainer,
+        !!trackedClient && {
+          marginHorizontal: 0,
+          marginTop: 0,
+          marginBottom: 0,
+          borderRadius: 0,
+        }
+      ]}>
+        {/* Floating Search Bar (Oculto em Rastreamento Expandido) */}
+        {!trackedClient && (
+          <View style={styles.searchContainer}>
           <View style={[styles.searchInputWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
             <TextInput
               style={[styles.searchInput, { color: colors.textDark }]}
@@ -729,6 +770,7 @@ export default function AdminMapScreen() {
             </ScrollView>
           )}
         </View>
+        )}
 
         <MapView
           ref={mapRef}
@@ -845,7 +887,11 @@ export default function AdminMapScreen() {
         
         {/* Botão de Centralizar na Loja */}
         <TouchableOpacity 
-          style={[styles.recenterBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderColor: isDarkMode ? '#2E2E38' : '#EFEFEF' }]}
+          style={[
+            styles.recenterBtn, 
+            { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderColor: isDarkMode ? '#2E2E38' : '#EFEFEF' },
+            !!trackedClient && { bottom: 85 }
+          ]}
           onPress={() => {
             if (mapRef.current) {
               mapRef.current.animateToRegion(storeLocation, 1000);
@@ -874,7 +920,8 @@ export default function AdminMapScreen() {
                 shadowOpacity: 0.6, 
                 shadowRadius: 8, 
                 elevation: 10,
-              }
+              },
+              !!trackedClient && { bottom: 85 }
             ]}
             onPress={() => {
               if (mapRef.current && trackedClient) {
@@ -964,9 +1011,48 @@ export default function AdminMapScreen() {
             </Text>
           </View>
         )}
+
+        {/* Banner premium "Em rota" */}
+        {!!trackedClient && (
+          <View style={[
+            styles.emRotaContainer,
+            { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }
+          ]}>
+            <View style={styles.pulseContainer}>
+              <View style={styles.pulseDot} />
+            </View>
+            <Text style={[styles.emRotaText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+              Em rota
+            </Text>
+          </View>
+        )}
+
+        {/* Botão Voltar Customizado */}
+        {!!trackedClient && (
+          <TouchableOpacity
+            style={[
+              styles.backBtn,
+              isDarkMode
+                ? { backgroundColor: '#2E2E38', borderColor: '#3E3E4A' }
+                : { backgroundColor: '#042A7D', borderColor: '#032060' }
+            ]}
+            onPress={handleGoBackFromTracking}
+            activeOpacity={0.8}
+          >
+            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? '#FFE082' : '#FFFFFF'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M19 12H5M12 19l-7-7 7-7" />
+            </Svg>
+            <Text style={[
+              styles.backBtnText,
+              { color: isDarkMode ? '#FFE082' : '#FFFFFF' }
+            ]}>
+              Voltar
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
       
-      <AdminUserMenu />
+      {!trackedClient && <AdminUserMenu />}
     </View>
   );
 }
@@ -1105,7 +1191,7 @@ const styles = StyleSheet.create({
   // ========== TRACKING BADGE ==========
   trackingBadge: {
     position: 'absolute',
-    top: 80,
+    top: 100,
     alignSelf: 'center',
     backgroundColor: '#1a3a6b',
     paddingHorizontal: 20,
@@ -1129,5 +1215,61 @@ const styles = StyleSheet.create({
     color: '#E0E0E0',
     fontSize: 12,
     fontWeight: '600',
+  },
+  // ========== MAPA EXPANDIDO OVERLAYS ==========
+  emRotaContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    zIndex: 99,
+    gap: 8,
+  },
+  pulseContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  emRotaText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  backBtn: {
+    position: 'absolute',
+    bottom: 20,
+    left: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    gap: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 99,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

@@ -119,7 +119,10 @@ export default function ManageProductsScreen() {
   }, [navigation, route.params]);
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchText.toLowerCase());
+    const name = (p.name || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const query = searchText.toLowerCase();
+    const matchesSearch = name.includes(query) || desc.includes(query);
     const matchesCategory = isProductInCategories(p, activeCategories);
     const isActive = p.active !== false;
     

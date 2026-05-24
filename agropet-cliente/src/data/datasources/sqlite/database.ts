@@ -6,7 +6,6 @@ export async function initDB() {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     
-    -- Carrinho de compras (Persistência Offline-First)
     CREATE TABLE IF NOT EXISTS cart (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
@@ -15,7 +14,6 @@ export async function initDB() {
       image_url TEXT
     );
 
-    -- Cache de Produtos para Operação Offline
     CREATE TABLE IF NOT EXISTS products_cache (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
@@ -27,7 +25,6 @@ export async function initDB() {
       cached_at INTEGER NOT NULL
     );
 
-    -- Cache de Pedidos para Recuperação de Estado e Histórico Offline
     CREATE TABLE IF NOT EXISTS orders_cache (
       id TEXT PRIMARY KEY NOT NULL,
       status TEXT NOT NULL,
@@ -38,7 +35,6 @@ export async function initDB() {
       cached_at INTEGER NOT NULL
     );
 
-    -- Fila de Sincronização Offline (Queue Pattern)
     CREATE TABLE IF NOT EXISTS sync_queue (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       operation TEXT NOT NULL,

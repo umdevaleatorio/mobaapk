@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert, RefreshControl } from 'react-native';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -23,16 +23,34 @@ export default function AdminOrdersScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
     fetchOrders();
 
+    // Inscrição em tempo real para novos pedidos ou mudanças de status
+    const channel = supabase
+      .channel('admin_orders_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('Alteração detectada em tempo real na tabela de pedidos:', payload);
+          fetchOrders(false); // Atualiza os pedidos silenciosamente
+        }
+      )
+      .subscribe();
+
     const unsubscribe = navigation.addListener('focus', () => {
       fetchOrders();
     });
-    return unsubscribe;
+
+    return () => {
+      supabase.removeChannel(channel);
+      unsubscribe();
+    };
   }, [navigation]);
 
   // Timer local para atualizar o tempo atual a cada 10 segundos, forçando a limpeza automática de pedidos expirados
@@ -43,31 +61,33 @@ export default function AdminOrdersScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       // Fetch all orders for admin (excluding completed orders)
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('*, users(id, name, phone, lat, lng, rua, numero, bairro, cep), order_items( quantity, unit_price, product_id, products( name, image_url ) )')
+        .select('*, users(id, name, phone, lat, lng, rua, numero, bairro, cep, location_confirmed), order_items( quantity, unit_price, product_id, products( name, image_url ) )')
         .neq('status', 'completed')
         .order('created_at', { ascending: false });
         
       if (ordersError) throw ordersError;
+      
       setOrders(ordersData || []);
     } catch (error) {
-      console.error(error);
+      console.error('Erro ao buscar pedidos no AdminOrdersScreen:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  const handleTrackOrder = (order: any) => {
-    if (!order.users?.lat || !order.users?.lng) {
-      Alert.alert('Aviso', 'Este cliente não possui localização geográfica cadastrada no perfil.');
-      return;
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchOrders(false);
+    setRefreshing(false);
+  };
 
+  const handleTrackOrder = (order: any) => {
     navigation.navigate('AdminTabs', {
       screen: 'Mapa',
       params: {
@@ -97,9 +117,16 @@ export default function AdminOrdersScreen() {
     }
   };
 
-  const activeOrders = orders.filter(order => order.status !== 'cancelled');
+  const activeOrders = orders.filter(order => 
+    order.status !== 'cancelled' && 
+    order.users?.lat && 
+    order.users?.lng && 
+    order.users?.location_confirmed
+  );
+  
   const cancelledOrders = orders.filter(order => {
     if (order.status !== 'cancelled') return false;
+    if (!order.users?.lat || !order.users?.lng || !order.users?.location_confirmed) return false;
     const cancellationTime = new Date(order.updated_at || order.created_at).getTime();
     const elapsed = currentTime - cancellationTime;
     return elapsed < 5 * 60 * 1000; // 5 minutos em milissegundos
@@ -179,7 +206,18 @@ export default function AdminOrdersScreen() {
       <AdminHeader title="ver_pedidos" />
 
       {/* Body */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#339914"]}
+            tintColor={isDarkMode ? "#FFFFFF" : "#339914"}
+          />
+        }
+      >
         
         <View style={styles.sectionHeader}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', marginLeft: 4 }}>Pedidos de hoje:</Text>

@@ -172,22 +172,50 @@ Novas e inovadoras mecânicas de comportamento visual e de negócios estão cata
 
 - **Pagamento Nativo por PIX:** Geração inteligente de QR Code *Copy and Paste* dinâmico com suporte para leitor via câmera no app do cliente.
 - **Autenticação Biométrica:** Acesso facilitado e seguro ao painel administrativo por meio de FaceID ou impressão digital local (`expo-local-authentication`).
-- **Dashboard Financeiro com Caixa e Sangria:**
-  - Card topo exibindo o saldo em caixa sincronizado em tempo real.
-  - Divisão horizontal interna exibindo separadamente os montantes de *Crédito*, *Débito*, *PIX* e *Dinheiro*.
-  - Botão de **Sangria** para debitar despesas operacionais da loja manualmente, alterando o caixa na hora.
-- **Visualização de Mapa Expandido:** Expansão dinâmica em tela cheia (ocultando barras do menu superior/inferior) ao rastrear entrega. Possui design de botões de controle de acordo com o tema:
-  - **Tema Claro:** Botão *"Voltar"* azul escuro com texto e seta em branco no canto inferior esquerdo.
-  - **Tema Escuro:** Botão *"Voltar"* soft dark com texto e seta em amarelo no mesmo posicionamento.
-- **Gestão de Horários Especializada e Alerta Dinâmico:**
-  - Suporte a escalas de horário de funcionamento: Dias úteis (08h às 18h), Sábados e Feriados (08h às 12h) e Domingos (Fechado).
-  - Contador regressivo dinâmico inteligente no formato `{XX(dias) . XX(horas) . XX(minutos) . XX(segundos)}` para períodos de reabertura maiores de 24h.
-  - Bloqueios transacionais de carrinho e rastreamento nos horários de fechamento.
-  - Card de status do frete no catálogo em vermelho claro/texto vermelho médio quando inativo, e um belo card azul claro de comemoração ao ser reativado.
-- **Histórico com Ganhos e Períodos Dinâmicos:**
-  - Filtro administrativo para somar faturamento de intervalos inteiros (ex: dia 1 ao dia 12) modificando o card para *"Neste período:"*.
-  - Renomeador inteligente de cabeçalhos de faturamento baseados no dia isolado selecionado: *"Hoje:"*, *"Ontem:"*, *"Anteontem:"* ou *"Neste dia:"*.
-  - Modal branco especial informando faturamento nulo e travando seleção caso o admin selecione um domingo ou feriado de loja fechada.
+
+
+---
+
+<img src="updates-banner.svg?v=1.2" width="500" alt="AgroPet Updates" />
+
+
+
+
+
+
+
+## 🕹️ Histórico de Updates Realizados (Sprint de Inovação)
+
+Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente implementadas e agregadas ao ecossistema do **AgroPet Lambari**:
+
+### 🚚 1. Sistema de Desativação Dinâmica de Frete
+*   **Controle Centralizado (Admin):** O lojista pode interromper temporariamente todas as entregas por meio de um switch reativo em seu painel administrativo.
+*   **Comportamento Reativo (Cliente):** O aplicativo do cliente captura instantaneamente a desativação por WebSockets do Supabase, ocultando a aba de mapas e exibindo um aviso permanente em vermelho no catálogo. Além disso, o carrinho é ativamente bloqueado contra compras com mensagem explicativa e temporária.
+*   **Reativação Premiada:** Ao reativar o frete, o cliente é recebido com uma barra de saudações azul comemorativa e o mapa retorna à barra de navegação principal de imediato.
+
+### 🗺️ 2. Visualização de Mapa Expandido (Tela Cheia)
+*   **Foco e Imersão:** Durante a entrega ativa, o rastreamento expande o mapa para tela cheia, ocultando barras de navegação superior e inferior para máxima clareza da rota do motorista.
+*   **Controle de Retorno Customizado:** Um botão posicionado de forma absoluta no canto inferior esquerdo permite voltar com facilidade:
+    *   **Tema Claro:** Botão azul marinho escuro com seta e texto brancos.
+    *   **Tema Escuro:** Botão *soft dark* com seta e texto no amarelo ouro institucional da marca.
+
+### ⏰ 3. Mensagens e Saudações Customizadas com Inteligência de Funcionamento
+*   **Saudação Dinâmica por Nome:** Busca do banco de dados do Supabase o primeiro nome do usuário ativo (cliente ou administrador) e o saúda conforme o horário local (Bom dia/Boa noite) com focus-sincronização reativa.
+*   **Biblioteca de Horários com Algoritmo Feriados:** Criamos um motor de cálculo astronômico que determina feriados nacionais móveis no Brasil (Carnaval, Páscoa, Corpus Christi) e fixos.
+*   **Contador Regressivo Inteligente:** Exibição em tempo real (atualizada segundo a segundo) do tempo restante de expediente, mostrando campo de dias para inatividades maiores de 24h (fins de semana).
+*   **Barra de Saudação Descartável e Persistente:** O card pode ser fechado no botão `X` da home (executando animação de rotação 180º, escala de 1 a 0 e fadeout completo), sincronizando seu estado via `SecureStore` (chave `'show_greeting_bar'`) com um toggle switch nas Configurações com animação de entrada fade/scale premium.
+
+### 📊 4. Seleção de Datas para Consulta de Ganhos
+*   **Duplo Modo de Filtragem:** O administrador pode somar faturamento e auditar despesas por **Dia Único** ou **Período Personalizado**.
+*   **In-Modal Date Picker Dashboard:** Painel inovador contendo duas linhas interativas de Início e Fim que abrem os pickers de forma independente, evitando overlaps e travamentos.
+*   **Validação de Domingo/Feriados com Reversão Automática:** Se o admin selecionar um dia em que a loja esteve inativa, o app exibe uma tela branca informativa e reverte de forma automática e silenciosa a seleção para o último intervalo válido anterior.
+
+### 🎛️ 5. Painel de Vendas / Caixa e Sangria
+*   **Saldo Permanente Global:** O card de Caixa no topo atua de forma separada dos filtros do dashboard, acumulando todo o faturamento transacional e debitando todas as retiradas desde o início do aplicativo.
+*   **Caixa com Gaveta Negativa:** As sangrias (despesas da loja) podem levar a gaveta de dinheiro físico ao negativo. Quando isso ocorre, o saldo do caixa e a bolinha do pulsar ativo de caixa mudam dinamicamente para **Vermelho Claro** (`#FF5252`), sinalizando déficit.
+*   **Máscara de Valor Reativa:** O modal de sangria possui input numérico inteligente com máscara em tempo real em R$, persistido de forma segura via `SecureStore`.
+*   **Gráfico SVG Dinâmico Verde Água:** Desenho completo e responsivo de curvas suavizadas (Bezier) usando `<Svg>` com preenchimento degradê **Verde Água** (`#00BFA5`).
+*   **Métricas Segmentadas:** Ticket Médio customizado em verde registry (`#339914`) e Qtd. Pedidos em Verde Água (`#00BFA5`) no claro e marfim (`#FFE082`) no escuro.
 
 ---
 

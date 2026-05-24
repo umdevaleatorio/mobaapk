@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Text,
   Animated,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import Svg, { Circle, Line, Path, Defs, LinearGradient, Stop, Rect, G, Ellipse } from 'react-native-svg';
@@ -283,7 +284,7 @@ const FiorinoIcon = ({ facingRight = true }: { facingRight?: boolean }) => {
   );
 };
 
-export default function MapScreen({ route }: any) {
+export default function MapScreen({ route, navigation }: any) {
   const { colors, isDarkMode } = useTheme();
   const { user } = useContext(AuthContext);
   const [searchText, setSearchText] = useState('');
@@ -298,6 +299,63 @@ export default function MapScreen({ route }: any) {
   const trackingOrderId = route?.params?.trackingOrderId || null;
   const [routeCoordinates, setRouteCoordinates] = useState<{ latitude: number; longitude: number }[]>([]);
   const [remainingRoute, setRemainingRoute] = useState<{ latitude: number; longitude: number }[]>([]);
+
+  // Limpar parâmetros de rastreamento ao perder o foco (blur)
+  useEffect(() => {
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      // Limpar todos os timers
+      if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
+      if (carAnimationIntervalRef.current) clearInterval(carAnimationIntervalRef.current);
+      if (trackingTimeoutRef.current) clearTimeout(trackingTimeoutRef.current);
+      if (hideCarTimeoutRef.current) clearTimeout(hideCarTimeoutRef.current);
+
+      // Limpar estados locais
+      setRouteCoordinates([]);
+      setRemainingRoute([]);
+      setCarPosition(null);
+      setIsTracking(false);
+      setHasArrived(false);
+      setShowCar(true);
+
+      // Resetar parâmetro de rota
+      navigation.setParams({ trackingOrderId: null });
+    });
+
+    return unsubscribeBlur;
+  }, [navigation]);
+
+  const handleGoBackFromTracking = () => {
+    // 1. Limpar timers e intervalos locais de rastreamento
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+      trackingIntervalRef.current = null;
+    }
+    if (carAnimationIntervalRef.current) {
+      clearInterval(carAnimationIntervalRef.current);
+      carAnimationIntervalRef.current = null;
+    }
+    if (trackingTimeoutRef.current) {
+      clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    if (hideCarTimeoutRef.current) {
+      clearTimeout(hideCarTimeoutRef.current);
+      hideCarTimeoutRef.current = null;
+    }
+
+    // 2. Resetar estados locais de rastreamento
+    setRouteCoordinates([]);
+    setRemainingRoute([]);
+    setCarPosition(null);
+    setIsTracking(false);
+    setHasArrived(false);
+
+    // 3. Resetar parâmetros de rota do React Navigation
+    navigation.setParams({ trackingOrderId: null });
+
+    // 4. Voltar para a tela anterior
+    navigation.goBack();
+  };
   const [carPosition, setCarPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [facingRight, setFacingRight] = useState(true);
@@ -709,17 +767,27 @@ export default function MapScreen({ route }: any) {
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
-      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
+      <StatusBar backgroundColor={trackingOrderId ? 'transparent' : colors.headerBackground} barStyle="light-content" translucent={!!trackingOrderId} />
 
-      {/* Header do Cliente */}
-      <CatalogHeader
-        title="Mapa/Frete"
-        searchText={searchText}
-        onSearchChange={setSearchText}
-      />
+      {/* Header do Cliente (Oculto em Rastreamento Expandido) */}
+      {!trackingOrderId && (
+        <CatalogHeader
+          title="Mapa/Frete"
+          searchText={searchText}
+          onSearchChange={setSearchText}
+        />
+      )}
 
       {/* ========== MAPA ========== */}
-      <View style={styles.mapContainer}>
+      <View style={[
+        styles.mapContainer,
+        !!trackingOrderId && {
+          marginHorizontal: 0,
+          marginTop: 0,
+          marginBottom: 0,
+          borderRadius: 0,
+        }
+      ]}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -785,7 +853,10 @@ export default function MapScreen({ route }: any) {
         </MapView>
         
         {/* Botões de Centralizar (Mira) */}
-        <View style={styles.recenterContainer}>
+        <View style={[
+          styles.recenterContainer,
+          !!trackingOrderId && { bottom: 85 }
+        ]}>
           {/* Mira da Loja (aponta só para a loja) */}
           <TouchableOpacity 
             style={[styles.recenterBtn, { 
@@ -880,6 +951,45 @@ export default function MapScreen({ route }: any) {
             </Text>
           </View>
         )}
+
+        {/* Banner premium "Em rota" */}
+        {!!trackingOrderId && (
+          <View style={[
+            styles.emRotaContainer,
+            { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }
+          ]}>
+            <View style={styles.pulseContainer}>
+              <View style={styles.pulseDot} />
+            </View>
+            <Text style={[styles.emRotaText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+              Em rota
+            </Text>
+          </View>
+        )}
+
+        {/* Botão Voltar Customizado */}
+        {!!trackingOrderId && (
+          <TouchableOpacity
+            style={[
+              styles.backBtn,
+              isDarkMode
+                ? { backgroundColor: '#2E2E38', borderColor: '#3E3E4A' }
+                : { backgroundColor: '#042A7D', borderColor: '#032060' }
+            ]}
+            onPress={handleGoBackFromTracking}
+            activeOpacity={0.8}
+          >
+            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? '#FFE082' : '#FFFFFF'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M19 12H5M12 19l-7-7 7-7" />
+            </Svg>
+            <Text style={[
+              styles.backBtnText,
+              { color: isDarkMode ? '#FFE082' : '#FFFFFF' }
+            ]}>
+              Voltar
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -962,7 +1072,7 @@ const styles = StyleSheet.create({
   // ========== TRACKING BADGE ==========
   trackingBadge: {
     position: 'absolute',
-    top: 15,
+    top: 100,
     alignSelf: 'center',
     backgroundColor: '#1a3a6b',
     paddingHorizontal: 20,
@@ -986,5 +1096,61 @@ const styles = StyleSheet.create({
     color: '#E0E0E0',
     fontSize: 12,
     fontWeight: '600',
+  },
+  // ========== MAPA EXPANDIDO OVERLAYS ==========
+  emRotaContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    zIndex: 99,
+    gap: 8,
+  },
+  pulseContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  emRotaText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  backBtn: {
+    position: 'absolute',
+    bottom: 20,
+    left: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    gap: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 99,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

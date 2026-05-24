@@ -21,6 +21,7 @@ import * as SecureStore from 'expo-secure-store';
 
 import { CatalogHeader } from '../../components/CatalogHeader';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { getShopStatus } from '../../../utils/shopHours';
 
 // === HEADER SVGs ===
 // Removidos MiniLogo, Lupa, PersonIcon e CarrinhoTitle (usados no CatalogHeader)
@@ -40,6 +41,7 @@ export default function CartScreen() {
   const { toggleMenu } = useUserMenu();
   const { cart, addToCart, removeFromCart, clearCart, total } = useContext(CartContext);
   const [searchText, setSearchText] = useState('');
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Estados do Modo de Edição/Remoção
   const [isEditMode, setIsEditMode] = useState(false);
@@ -234,13 +236,65 @@ export default function CartScreen() {
       Alert.alert('Carrinho vazio', 'Adicione produtos antes de prosseguir.');
       return;
     }
+
+    // Verificar se a loja está aberta
+    const shop = getShopStatus(new Date());
+    if (!shop.isOpen) {
+      if (shop.isSundayOrHoliday) {
+        setCheckoutError('Você não pode fazer compras hoje pois é Domingo (ou Feriado)!');
+      } else {
+        setCheckoutError('Você não pode fazer compras fora do horário de funcionamento!');
+      }
+      setTimeout(() => setCheckoutError(null), 5000);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
+      // 1. Obter usuário logado atual do Supabase Auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        Alert.alert('Erro', 'Você precisa estar autenticado para fechar o pedido.');
+        return;
+      }
+
+      // 2. Buscar dados do perfil do usuário para validar endereço
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('rua, bairro, cep, numero, location_confirmed')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        Alert.alert('Erro', 'Não foi possível carregar os dados do seu perfil. Verifique sua conexão.');
+        return;
+      }
+
+      const hasEmptyFields = !profile.rua?.trim() || !profile.bairro?.trim() || !profile.cep?.trim() || !profile.numero?.trim();
+      
+      if (hasEmptyFields || !profile.location_confirmed) {
+        Alert.alert(
+          'Endereço pendente',
+          'Você não cadastrou ou não confirmou o endereço da sua casa no perfil, portanto não será possível a entrega.\n\nPor favor, vá até a tela de perfil para preencher e salvar o seu endereço.',
+          [
+            { 
+              text: 'Ir para o Perfil', 
+              onPress: () => {
+                navigation.navigate('ProfileScreen');
+              } 
+            },
+            { text: 'Cancelar', style: 'cancel' }
+          ]
+        );
+        return;
+      }
+
+      // 3. Verificar se o frete está ativo
+      const { data: settings, error: settingsError } = await supabase
         .from('store_settings')
         .select('delivery_active')
         .maybeSingle();
 
-      if (data && !error && data.delivery_active === false) {
+      if (settings && !settingsError && settings.delivery_active === false) {
         Alert.alert(
           'Aviso',
           'Não é possível prosseguir com a compra. O frete encontra-se inativo no momento.'
@@ -248,8 +302,9 @@ export default function CartScreen() {
         return;
       }
     } catch (e) {
-      console.log('Error checking delivery status during checkout:', e);
+      console.log('Error checking profile or settings during checkout:', e);
     }
+    
     navigation.navigate('PaymentScreen');
   };
 
@@ -431,6 +486,11 @@ export default function CartScreen() {
 
       {/* ========== BOTÕES (fixos acima da barra de baixo) ========== */}
       <View style={styles.buttonsContainer}>
+        {checkoutError && (
+          <Text style={{ color: '#FF3B30', fontSize: 13, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
+            {checkoutError}
+          </Text>
+        )}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.btnContinuar, { backgroundColor: colors.cardBackground }]}

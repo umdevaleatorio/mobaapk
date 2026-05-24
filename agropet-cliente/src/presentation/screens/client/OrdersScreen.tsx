@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Image, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Image, Modal, Alert, RefreshControl } from 'react-native';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { AuthContext } from '../../contexts/AuthContext';
 import { CatalogHeader } from '../../components/CatalogHeader';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { getShopStatus } from '../../../utils/shopHours';
 
 // Body Labels
 import PedidosEmEntregaSvg from '../../assets/tela11/Pedidos em entrega_.svg';
@@ -40,6 +41,7 @@ export default function OrdersScreen({ navigation }: any) {
   const { isDarkMode, colors } = useTheme();
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [activeCancelDropdownId, setActiveCancelDropdownId] = useState<string | null>(null);
@@ -52,6 +54,8 @@ export default function OrdersScreen({ navigation }: any) {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+  const [deliveryActive, setDeliveryActive] = useState(true);
+  const [trackingErrors, setTrackingErrors] = useState<{[orderId: string]: string}>({});
 
   const showAlert = (title: string, message: string) => {
     setAlertTitle(title);
@@ -63,26 +67,68 @@ export default function OrdersScreen({ navigation }: any) {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      
-      // Busca todos os pedidos do usuário ordenados por data
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select('*, order_items( product_id, quantity, unit_price, products( name, image_url, description ) )')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+  // Sincronizar status de frete ativo/inativo na barra inferior
+  useEffect(() => {
+    const fetchDeliveryStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('delivery_active')
+          .maybeSingle();
+        if (data && !error && data.delivery_active !== undefined) {
+          setDeliveryActive(data.delivery_active);
+        }
+      } catch (e) {
+        console.log('Error fetching delivery active in orders:', e);
+      }
+    };
+
+    fetchDeliveryStatus();
+
+    const channel = supabase
+      .channel('store_settings_orders_tabs')
+      .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'store_settings' },
+          (payload) => {
+            if (payload.new && (payload.new as any).delivery_active !== undefined) {
+              setDeliveryActive((payload.new as any).delivery_active);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, []);
+  
+    const fetchOrders = async (showLoading = true) => {
+      if (!user) return;
+      try {
+        if (showLoading) setLoading(true);
         
-      if (ordersError) throw ordersError;
-      setOrders(ordersData || []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Busca todos os pedidos do usuário ordenados por data
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*, order_items( product_id, quantity, unit_price, products( name, image_url, description ) )')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (ordersError) throw ordersError;
+        setOrders(ordersData || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    };
+  
+    const onRefresh = async () => {
+      setRefreshing(true);
+      await fetchOrders(false);
+      setRefreshing(false);
+    };
 
   const getPaymentDisplay = (paymentMethod: string) => {
     switch(paymentMethod) {
@@ -95,6 +141,30 @@ export default function OrdersScreen({ navigation }: any) {
   };
 
   const toggleDropdown = async (orderId: string) => {
+    // Verificar se a loja está aberta
+    const shop = getShopStatus(new Date());
+    if (!shop.isOpen) {
+      if (shop.isSundayOrHoliday) {
+        Alert.alert(
+          'Aviso',
+          'Você não pode rastrear produtos hoje pois é Domingo (ou Feriado)'
+        );
+      } else {
+        setTrackingErrors(prev => ({
+          ...prev,
+          [orderId]: 'Você não pode rastrear fora do horário de funcionamento!'
+        }));
+        setTimeout(() => {
+          setTrackingErrors(prev => {
+            const next = { ...prev };
+            delete next[orderId];
+            return next;
+          });
+        }, 5000);
+      }
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('store_settings')
@@ -182,6 +252,14 @@ export default function OrdersScreen({ navigation }: any) {
       <ScrollView 
         contentContainerStyle={[styles.scrollContent, (showDeliveryOnly || showHistoryOnly) && { paddingTop: 10 }]} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#339914"]}
+            tintColor={isDarkMode ? "#FFFFFF" : "#339914"}
+          />
+        }
       >
         
         {showDeliveryOnly ? (
@@ -243,6 +321,11 @@ export default function OrdersScreen({ navigation }: any) {
                       <TouchableOpacity onPress={() => toggleDropdown(order.id)}>
                         <RastrearSvg width={57} height={14} />
                       </TouchableOpacity>
+                      {trackingErrors[order.id] && (
+                        <Text style={{ color: '#FF3B30', fontSize: 9, fontWeight: 'bold', marginTop: 4, width: 85, textAlign: 'center', lineHeight: 12 }}>
+                          {trackingErrors[order.id]}
+                        </Text>
+                      )}
                       <TouchableOpacity onPress={() => navigation.navigate('OrderDetailScreen', { order })} style={{ marginTop: 6 }}>
                         <Text style={{ color: isDarkMode ? '#FFE082' : '#1C2434', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>Detalhes</Text>
                       </TouchableOpacity>
@@ -416,6 +499,11 @@ export default function OrdersScreen({ navigation }: any) {
                       <TouchableOpacity onPress={() => toggleDropdown(order.id)}>
                         <RastrearSvg width={57} height={14} />
                       </TouchableOpacity>
+                      {trackingErrors[order.id] && (
+                        <Text style={{ color: '#FF3B30', fontSize: 9, fontWeight: 'bold', marginTop: 4, width: 85, textAlign: 'center', lineHeight: 12 }}>
+                          {trackingErrors[order.id]}
+                        </Text>
+                      )}
 
                       <TouchableOpacity 
                         onPress={() => navigation.navigate('OrderDetailScreen', { order })} 
@@ -736,22 +824,26 @@ export default function OrdersScreen({ navigation }: any) {
           
           <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
-              {isDarkMode ? (
-                <MapIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
-              ) : (
-                <MapIcon8 width={32} height={32} />
-              )}
-            </View>
-            {isDarkMode ? (
-              <MapaLabel8 width={32} height={12} fill="#FFFFFF" stroke="#FFFFFF" />
-            ) : (
-              <MapaLabel8 width={32} height={12} />
-            )}
-          </TouchableOpacity>
-          
-          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+          {deliveryActive && (
+            <>
+              <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
+                <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+                  {isDarkMode ? (
+                    <MapIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+                  ) : (
+                    <MapIcon8 width={32} height={32} />
+                  )}
+                </View>
+                {isDarkMode ? (
+                  <MapaLabel8 width={32} height={12} fill="#FFFFFF" stroke="#FFFFFF" />
+                ) : (
+                  <MapaLabel8 width={32} height={12} />
+                )}
+              </TouchableOpacity>
+              
+              <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+            </>
+          )}
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
             <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>

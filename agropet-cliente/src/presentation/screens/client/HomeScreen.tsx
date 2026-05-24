@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Image,
   Text,
+  RefreshControl,
+  Platform,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Colors from '../../theme/colors';
@@ -17,9 +20,11 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../data/datasources/supabase/client';
 
 import { CartContext } from '../../contexts/CartContext';
+import { AuthContext } from '../../contexts/AuthContext';
 import { CatalogHeader, CatalogFilter } from '../../components/CatalogHeader';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useFilter, isProductInCategories } from '../../contexts/FilterContext';
+import { getShopStatus } from '../../../utils/shopHours';
 
 // === PRODUTO SVGs ===
 // AddCartIcon substituído por Feather
@@ -35,15 +40,141 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { searchText, setSearchText, selectedCategories } = useFilter();
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
 
   const [esgotadoAlert, setEsgotadoAlert] = useState<string | null>(null);
   const [deliveryActive, setDeliveryActive] = useState(true);
   const [showReactivatedAlert, setShowReactivatedAlert] = useState(false);
 
-  const fetchProducts = async () => {
-    setLoading(true);
+  const [clientName, setClientName] = useState('');
+  const [greeting, setGreeting] = useState('');
+  const [shopStatus, setShopStatusState] = useState<any>(null);
+  const [showGreetingBar, setShowGreetingBar] = useState(true);
+
+  const greetingOpacity = React.useRef(new Animated.Value(1)).current;
+  const greetingScale = React.useRef(new Animated.Value(1)).current;
+  const closeButtonRotate = React.useRef(new Animated.Value(0)).current;
+  const closeButtonScale = React.useRef(new Animated.Value(1)).current;
+
+  // Buscar o nome do usuário autenticado para a saudação dinâmica
+  const fetchProfileName = async () => {
+    if (user?.id) {
+      try {
+        const { data } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        if (data?.name) {
+          const firstName = data.name.trim().split(' ')[0];
+          setClientName(firstName);
+        } else {
+          setClientName('');
+        }
+      } catch (e) {
+        console.log('Erro ao buscar nome do cliente para a saudação:', e);
+      }
+    } else {
+      setClientName('');
+    }
+  };
+
+  const checkGreetingPreference = async () => {
+    try {
+      const val = await SecureStore.getItemAsync('show_greeting_bar');
+      if (val === 'false') {
+        setShowGreetingBar(false);
+      } else {
+        // Set starting animated values for entrance animation
+        greetingOpacity.setValue(0);
+        greetingScale.setValue(0.95);
+        closeButtonRotate.setValue(0);
+        closeButtonScale.setValue(1);
+        setShowGreetingBar(true);
+
+        // Run transition
+        Animated.parallel([
+          Animated.timing(greetingOpacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(greetingScale, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    } catch (e) {
+      console.log('Erro ao ler preferência de saudação:', e);
+    }
+  };
+
+  const handleDismissGreeting = () => {
+    Animated.parallel([
+      Animated.timing(closeButtonRotate, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(closeButtonScale, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(greetingOpacity, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(greetingScale, {
+        toValue: 0.95,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      setShowGreetingBar(false);
+      try {
+        await SecureStore.setItemAsync('show_greeting_bar', 'false');
+      } catch (e) {
+        console.log('Erro ao salvar preferência de saudação:', e);
+      }
+    });
+  };
+
+  useEffect(() => {
+    fetchProfileName();
+    checkGreetingPreference();
+  }, [user]);
+
+  // Atualizar a saudação e o contador em tempo real a cada 1 segundo
+  useEffect(() => {
+    const updateStatus = () => {
+      const now = new Date();
+      const status = getShopStatus(now);
+      setShopStatusState(status);
+
+      const hour = now.getHours();
+      const isDay = hour >= 6 && hour < 18;
+      const nameToUse = clientName || 'Cliente';
+      if (isDay) {
+        setGreeting(`Bom dia, ${nameToUse}!`);
+      } else {
+        setGreeting(`Boa noite, ${nameToUse}!`);
+      }
+    };
+
+    updateStatus();
+    const interval = setInterval(updateStatus, 1000);
+    return () => clearInterval(interval);
+  }, [clientName]);
+
+  const fetchProducts = async (showLoadingIndicator = true) => {
+    if (showLoadingIndicator) setLoading(true);
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -51,8 +182,20 @@ export default function HomeScreen() {
       .order('created_at', { ascending: false });
 
     if (!error) setProducts(data || []);
-    setLoading(false);
+    if (showLoadingIndicator) setLoading(false);
   };
+
+  const handleRefresh = async () => {
+    setShowReactivatedAlert(false);
+    setRefreshing(true);
+    await Promise.all([
+      fetchProducts(false),
+      checkRecentEsgotados(),
+      checkDeliveryStatus()
+    ]);
+    setRefreshing(false);
+  };
+
 
   const checkRecentEsgotados = async () => {
     try {
@@ -62,12 +205,12 @@ export default function HomeScreen() {
         .select('id, name, updated_at')
         .eq('active', false)
         .gte('updated_at', oneDayAgo);
-        
+
       if (error || !data || data.length === 0) return;
-      
+
       const seenRaw = await SecureStore.getItemAsync('seen_esgotados');
       const seenList: string[] = seenRaw ? JSON.parse(seenRaw) : [];
-      
+
       const unseen = data.find(p => !seenList.includes(p.id));
       if (unseen) {
         setEsgotadoAlert(unseen.name);
@@ -85,27 +228,35 @@ export default function HomeScreen() {
         .from('store_settings')
         .select('delivery_active')
         .maybeSingle();
-        
+
       if (data && !error && data.delivery_active !== undefined) {
         const currentActive = data.delivery_active;
         setDeliveryActive(currentActive);
-        
-        // Verificar se houve mudança de inativo para ativo (reativação)
+
+        // Sincronizar parent ClientTabs
+        if (typeof (global as any).refreshDeliveryTabs === 'function') {
+          (global as any).refreshDeliveryTabs();
+        }
+
         const lastKnownRaw = await SecureStore.getItemAsync('last_known_delivery_active');
         if (lastKnownRaw !== null) {
           const lastKnown = lastKnownRaw === 'true';
           if (!lastKnown && currentActive) {
             setShowReactivatedAlert(true);
-            await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+            await SecureStore.setItemAsync('seen_reactivated_alert', 'true'); // Marca como visto imediatamente para a próxima sessão
           }
+        } else {
+          // Primeiro uso: marca como visto
+          await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
         }
+
+        if (!currentActive) {
+          // Se o frete foi desativado, preparamos o flag de visto para 'false' para a próxima reativação
+          await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+          setShowReactivatedAlert(false);
+        }
+
         await SecureStore.setItemAsync('last_known_delivery_active', String(currentActive));
-        
-        // Verificar se o alerta de reativado deve ser mostrado
-        const seenAlertRaw = await SecureStore.getItemAsync('seen_reactivated_alert');
-        if (currentActive && seenAlertRaw === 'false') {
-          setShowReactivatedAlert(true);
-        }
       }
     } catch (e) {
       console.log('Erro ao verificar status do frete na Home:', e);
@@ -121,6 +272,16 @@ export default function HomeScreen() {
     fetchProducts();
     checkRecentEsgotados();
     checkDeliveryStatus();
+    fetchProfileName();
+
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      setShowReactivatedAlert(false);
+    });
+
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      fetchProfileName();
+      checkGreetingPreference();
+    });
 
     const channel = supabase
       .channel('store_settings_home')
@@ -131,15 +292,28 @@ export default function HomeScreen() {
           if (payload.new && (payload.new as any).delivery_active !== undefined) {
             const currentActive = (payload.new as any).delivery_active;
             setDeliveryActive(currentActive);
-            
+
+            // Sincronizar parent ClientTabs
+            if (typeof (global as any).refreshDeliveryTabs === 'function') {
+              (global as any).refreshDeliveryTabs();
+            }
+
             const lastKnownRaw = await SecureStore.getItemAsync('last_known_delivery_active');
             if (lastKnownRaw !== null) {
               const lastKnown = lastKnownRaw === 'true';
               if (!lastKnown && currentActive) {
                 setShowReactivatedAlert(true);
-                await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+                await SecureStore.setItemAsync('seen_reactivated_alert', 'true'); // Marca como visto imediatamente para a próxima sessão
               }
+            } else {
+              await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
             }
+
+            if (!currentActive) {
+              await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
+              setShowReactivatedAlert(false);
+            }
+
             await SecureStore.setItemAsync('last_known_delivery_active', String(currentActive));
           }
         }
@@ -148,22 +322,27 @@ export default function HomeScreen() {
 
     return () => {
       supabase.removeChannel(channel);
+      unsubscribeBlur();
+      unsubscribeFocus();
     };
-  }, []);
+  }, [navigation]);
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchText.toLowerCase());
-    const matchesCategory = isProductInCategories(p.name, selectedCategories);
+    const name = (p.name || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const query = searchText.toLowerCase();
+    const matchesSearch = name.includes(query) || desc.includes(query);
+    const matchesCategory = isProductInCategories(p, selectedCategories);
     return matchesSearch && matchesCategory;
   });
 
   const renderProductCard = ({ item, index }: { item: any; index: number }) => (
     <View style={[
       styles.productCard,
-      { 
+      {
         backgroundColor: colors.cardBackground,
-        marginLeft: index % 2 === 0 ? 16 : 8, 
-        marginRight: index % 2 === 1 ? 16 : 8 
+        marginLeft: index % 2 === 0 ? 16 : 8,
+        marginRight: index % 2 === 1 ? 16 : 8
       }
     ]}>
       {/* Foto do produto */}
@@ -183,8 +362,8 @@ export default function HomeScreen() {
       {/* Linha inferior: AddCartIcon | Preço + VerItem */}
       <View style={styles.productBottomRow}>
         {/* Ícone carrinho animado/customizado (substituindo o AddCartIcon SVG bugado) */}
-        <TouchableOpacity 
-          onPress={() => addToCart(item)} 
+        <TouchableOpacity
+          onPress={() => addToCart(item)}
           activeOpacity={0.7}
           style={[styles.addCartBtn, { backgroundColor: isDarkMode ? '#1E1E1E' : '#1C2434' }]}
         >
@@ -216,7 +395,29 @@ export default function HomeScreen() {
 
       {/* Header + Filtro compartilhados */}
       <CatalogHeader searchText={searchText} onSearchChange={setSearchText} />
-      
+
+      {/* Card Permanente de Domingo ou Feriado */}
+      {shopStatus?.isSundayOrHoliday && (
+        <View style={[
+          styles.domingoFeriadoCard,
+          { backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0', borderColor: '#FF3B30' }
+        ]}>
+          <Feather name="alert-circle" size={18} color="#FF3B30" style={{ marginRight: 8, marginTop: 1 }} />
+          <Text style={[styles.domingoFeriadoText, { color: isDarkMode ? '#FF8A8A' : '#D32F2F' }]}>
+            {(() => {
+              const now = new Date();
+              const dayStr = String(now.getDate()).padStart(2, '0');
+              const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+              const yearStr = now.getFullYear();
+              const isSun = now.getDay() === 0;
+              return isSun
+                ? `Hoje é domingo, dia ${dayStr}-${monthStr}-${yearStr}. Não abrimos hoje.`
+                : `Hoje é feriado, dia ${dayStr}-${monthStr}-${yearStr}. Não abrimos hoje.`;
+            })()}
+          </Text>
+        </View>
+      )}
+
       {esgotadoAlert && (
         <View style={[
           styles.esgotadoBanner,
@@ -240,7 +441,7 @@ export default function HomeScreen() {
         ]}>
           <Feather name="alert-circle" size={18} color="#FF3B30" style={{ marginRight: 8, marginTop: 2 }} />
           <Text style={[styles.freteBannerText, { color: isDarkMode ? '#FF8A8A' : '#D32F2F' }]}>
-            Aviso: O frete encontra-se desativado no momento. Nesse período, você não conseguirá ver o mapa, rastrear pedido e nem prosseguir com a compra, mas você pode salvar suas compras no carrinho até ele voltar. Obrigado pela compreensão. Voltaremos em breve!
+            Aviso: O frete encontra-se desativado no momento. Nesse período, você não conseguirá ver o mapa, rastrear pedido e nem prosseguir with a compra, mas você pode salvar suas compras no carrinho até ele voltar. Obrigado pela compreensão. Voltaremos em breve!
           </Text>
         </View>
       )}
@@ -263,6 +464,44 @@ export default function HomeScreen() {
 
       <CatalogFilter />
 
+      {/* SAUDAÇÃO DINÂMICA + CONTADOR REGRESSIVO */}
+      {showGreetingBar && shopStatus && (
+        <Animated.View style={[
+          styles.greetingContainer,
+          {
+            backgroundColor: colors.cardBackground,
+            opacity: greetingOpacity,
+            transform: [{ scale: greetingScale }]
+          }
+        ]}>
+          <TouchableOpacity
+            style={styles.closeGreetingBtn}
+            onPress={handleDismissGreeting}
+            activeOpacity={0.7}
+          >
+            <Animated.View style={{
+              transform: [
+                {
+                  rotate: closeButtonRotate.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg']
+                  })
+                },
+                { scale: closeButtonScale }
+              ]
+            }}>
+              <Feather name="x" size={16} color={colors.textDark} />
+            </Animated.View>
+          </TouchableOpacity>
+          <Text style={[styles.greetingText, { color: colors.textDark }]}>
+            {greeting}
+          </Text>
+          <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#25BE36' : '#FF3B30' }]}>
+            {shopStatus.isOpen ? shopStatus.countdownText : `Atualmente estamos fechados. ${shopStatus.countdownText}`}
+          </Text>
+        </Animated.View>
+      )}
+
       {/* ========== GRID DE PRODUTOS ========== */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -276,10 +515,12 @@ export default function HomeScreen() {
           numColumns={2}
           contentContainerStyle={styles.productsGrid}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.textDark, textAlign: 'center', paddingHorizontal: 20 }]}>
-                {selectedCategories.length > 0 
+                {selectedCategories.length > 0
                   ? "Não temos produto desta categoria no momento, volte mais tarde!"
                   : "Nenhum produto encontrado"}
               </Text>
@@ -435,5 +676,52 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flexShrink: 1,
     lineHeight: 18,
+  },
+  greetingContainer: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  greetingText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  countdownText: {
+    fontSize: 12.5,
+    fontWeight: 'bold',
+  },
+  domingoFeriadoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  domingoFeriadoText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    flexShrink: 1,
+    lineHeight: 18,
+  },
+  closeGreetingBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+    zIndex: 10,
   },
 });

@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Image, Platform, Modal } from 'react-native';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../contexts/ThemeContext';
+import { isHoliday } from '../../../utils/shopHours';
+import { Feather } from '@expo/vector-icons';
 
 // Top SVGs
 import HojeLabelSvg from '../../assets/tela6/resumos/Hoje_.svg';
 import FundoBtnFiltro from '../../assets/tela6/selecionar data/Fundo.svg';
-import SelecionarDataTexto from '../../assets/tela6/selecionar data/Selecionar data.svg';
 import SetaBaixo from '../../assets/tela6/selecionar data/Upside Down.svg';
 
 // Card Labels & Separators
@@ -42,9 +43,30 @@ export default function AdminSalesHistoryScreen() {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
-  const [date, setDate] = useState(new Date());
+
+  // Date and Range filter states
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [isRange, setIsRange] = useState(false);
+  const [hasFiltered, setHasFiltered] = useState(true); // Default to filtered today
+
+  // Backup states for Sunday/Holiday automatic reversion
+  const [prevStartDate, setPrevStartDate] = useState<Date>(new Date());
+  const [prevEndDate, setPrevEndDate] = useState<Date>(new Date());
+  const [prevIsRange, setPrevIsRange] = useState(false);
+  const [prevHasFiltered, setPrevHasFiltered] = useState(true);
+
+  // Modals visibility
+  const [showFilterOptionModal, setShowFilterOptionModal] = useState(false);
+  const [showSundayHolidayModal, setShowSundayHolidayModal] = useState(false);
+
+  // DateTimePicker flow
+  const [pickerMode, setPickerMode] = useState<'single' | 'range_start' | 'range_end'>('single');
   const [showPicker, setShowPicker] = useState(false);
-  const [hasFilteredDate, setHasFilteredDate] = useState(false);
+
+  // Local picker state before confirming range
+  const [localStartDate, setLocalStartDate] = useState<Date>(new Date());
+  const [localEndDate, setLocalEndDate] = useState<Date>(new Date());
 
   const totalGeral = orders.reduce((acc, o) => acc + (o.total ?? 0), 0);
   const totalCredito = orders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0);
@@ -58,7 +80,7 @@ export default function AdminSalesHistoryScreen() {
 
   useEffect(() => {
     fetchSales();
-  }, [date, hasFilteredDate]);
+  }, [startDate, endDate, isRange, hasFiltered]);
 
   const fetchSales = async () => {
     try {
@@ -89,10 +111,10 @@ export default function AdminSalesHistoryScreen() {
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
-      if (hasFilteredDate) {
-        const start = new Date(date);
+      if (hasFiltered) {
+        const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        const end = new Date(date);
+        const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
         query = query.gte('created_at', start.toISOString()).lte('created_at', end.toISOString());
       } else {
@@ -113,9 +135,86 @@ export default function AdminSalesHistoryScreen() {
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
     setShowPicker(false);
+    if (event.type === 'dismissed') {
+      return;
+    }
+
     if (selectedDate) {
-      setDate(selectedDate);
-      setHasFilteredDate(true);
+      if (pickerMode === 'single') {
+        const isSun = selectedDate.getDay() === 0;
+        const isHol = isHoliday(selectedDate);
+        if (isSun || isHol) {
+          setShowSundayHolidayModal(true);
+          return;
+        }
+
+        // Save backups
+        setPrevStartDate(startDate);
+        setPrevEndDate(endDate);
+        setPrevIsRange(isRange);
+        setPrevHasFiltered(hasFiltered);
+
+        setStartDate(selectedDate);
+        setEndDate(selectedDate);
+        setIsRange(false);
+        setHasFiltered(true);
+        setShowFilterOptionModal(false); // Close modal on single pick
+      } else if (pickerMode === 'range_start') {
+        setLocalStartDate(selectedDate);
+      } else if (pickerMode === 'range_end') {
+        setLocalEndDate(selectedDate);
+      }
+    }
+  };
+
+  const handleCloseSundayHolidayModal = () => {
+    setShowSundayHolidayModal(false);
+    // Explicitly guarantee reversion
+    setStartDate(prevStartDate);
+    setEndDate(prevEndDate);
+    setIsRange(prevIsRange);
+    setHasFiltered(prevHasFiltered);
+  };
+
+  const getDynamicTitle = () => {
+    if (!hasFiltered) {
+      return "Histórico:";
+    }
+    if (isRange) {
+      const startD = startDate.getDate();
+      const startM = startDate.getMonth();
+      const startY = startDate.getFullYear();
+
+      const endD = endDate.getDate();
+      const endM = endDate.getMonth();
+      const endY = endDate.getFullYear();
+
+      if (startD === endD && startM === endM && startY === endY) {
+        return getSingleDayTitle(startDate);
+      }
+      return "Neste período:";
+    }
+    return getSingleDayTitle(startDate);
+  };
+
+  const getSingleDayTitle = (selectedDate: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const target = new Date(selectedDate);
+    target.setHours(0, 0, 0, 0);
+
+    const diffTime = today.getTime() - target.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return "Hoje:";
+    } else if (diffDays === 1) {
+      return "Ontem:";
+    } else if (diffDays === 2) {
+      return "Anteontem:";
+    } else {
+      return "Neste dia:";
     }
   };
 
@@ -143,13 +242,14 @@ export default function AdminSalesHistoryScreen() {
 
         {/* Filter Row: Hoje: [Selecionar data v] */}
         <View style={styles.filterRow}>
-          {isDarkMode ? (
-            <Text style={{ fontSize: 30, fontWeight: 'bold', color: '#FFFFFF', width: 110, height: 40, textAlignVertical: 'center', lineHeight: 40 }}>
-              Hoje:
-            </Text>
-          ) : (
-            <HojeLabelSvg width={90} height={36} />
-          )}
+          <Text style={{ 
+            fontSize: isDarkMode ? 30 : 25, 
+            fontWeight: 'bold', 
+            color: isDarkMode ? '#FFFFFF' : '#1C2434',
+            flex: 1.2,
+          }}>
+            {getDynamicTitle()}
+          </Text>
           
           <TouchableOpacity 
             activeOpacity={0.8} 
@@ -157,24 +257,39 @@ export default function AdminSalesHistoryScreen() {
               styles.filterBtn, 
               isDarkMode && { backgroundColor: '#1E1E24', borderRadius: 10 }
             ]} 
-            onPress={() => setShowPicker(true)}
+            onPress={() => {
+              setLocalStartDate(startDate);
+              setLocalEndDate(endDate);
+              setShowFilterOptionModal(true);
+            }}
           >
             {!isDarkMode && (
               <FundoBtnFiltro width={170} height={42} style={{ position: 'absolute' }} />
             )}
             <View style={styles.filterBtnContent}>
-              {hasFilteredDate ? (
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>
-                  {date.toLocaleDateString('pt-BR')}
+              {hasFiltered ? (
+                <Text style={{ 
+                  fontSize: isRange ? 11 : 14, 
+                  fontWeight: 'bold', 
+                  color: isDarkMode ? '#FFFFFF' : '#1C2434',
+                  textAlign: 'center',
+                  flex: 1
+                }}>
+                  {isRange 
+                    ? `${startDate.toLocaleDateString('pt-BR')} - ${endDate.toLocaleDateString('pt-BR')}`
+                    : startDate.toLocaleDateString('pt-BR')
+                  }
                 </Text>
               ) : (
-                isDarkMode ? (
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>
-                    Selecionar data
-                  </Text>
-                ) : (
-                  <SelecionarDataTexto width={110} height={16} />
-                )
+                <Text style={{ 
+                  fontSize: 14, 
+                  fontWeight: 'bold', 
+                  color: isDarkMode ? '#FFFFFF' : '#1C2434',
+                  textAlign: 'center',
+                  flex: 1
+                }}>
+                  Selecionar data
+                </Text>
               )}
               <SetaBaixo 
                 width={15} 
@@ -188,7 +303,9 @@ export default function AdminSalesHistoryScreen() {
         {/* Totals Summary Card (Branco-neve) */}
         <View style={[styles.summaryCard, { backgroundColor: isDarkMode ? colors.cardBackground : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}>
           <View style={[styles.summaryTotalRow, { borderBottomColor: isDarkMode ? '#3E3E4A' : '#FFFFFF' }]}>
-            <Text style={[styles.summaryTotalLabel, { color: colors.textDark }]}>Venda Total do Dia</Text>
+            <Text style={[styles.summaryTotalLabel, { color: colors.textDark }]}>
+              {isRange ? "Venda Total no Período" : "Venda Total do Dia"}
+            </Text>
             <Text style={[styles.summaryTotalValue, { color: colors.textDark }]}>{formatCurrency(totalGeral)}</Text>
           </View>
 
@@ -215,13 +332,152 @@ export default function AdminSalesHistoryScreen() {
 
         {showPicker && (
           <DateTimePicker
-            value={date}
+            value={pickerMode === 'range_end' ? endDate : startDate}
             mode="date"
             display="default"
             onChange={onChangeDate}
             themeVariant={isDarkMode ? 'dark' : 'light'}
           />
         )}
+
+        {/* Modal de Opções de Filtro */}
+        <Modal visible={showFilterOptionModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+              <Text style={[styles.whiteModalTitle, { color: colors.textDark }]}>
+                Filtrar Ganhos
+              </Text>
+              <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676' }]}>
+                Escolha como deseja consultar os ganhos da loja:
+              </Text>
+
+              {/* MODO DIA ÚNICO */}
+              <TouchableOpacity 
+                style={[styles.filterModeHeader, { borderBottomColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setPickerMode('single');
+                  setShowPicker(true);
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Feather name="calendar" size={20} color={colors.primary} style={{ marginRight: 10 }} />
+                  <View>
+                    <Text style={[styles.filterModeTitle, { color: colors.textDark }]}>Dia Único</Text>
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#A8A8B3' : '#767676' }}>
+                      Consultar ganhos de uma data específica
+                    </Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={20} color={isDarkMode ? '#A8A8B3' : '#767676'} />
+              </TouchableOpacity>
+
+              {/* MODO PERÍODO PERSONALIZADO */}
+              <View style={[styles.filterPeriodContainer, { borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}>
+                <Text style={[styles.filterModeTitle, { color: colors.textDark, marginBottom: 12 }]}>
+                  Período Personalizado
+                </Text>
+
+                <View style={styles.rangeRowContainer}>
+                  {/* Botão Data Início */}
+                  <TouchableOpacity 
+                    style={[styles.datePickRow, { backgroundColor: isDarkMode ? '#1E1E24' : '#F5F6FA' }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setPickerMode('range_start');
+                      setShowPicker(true);
+                    }}
+                  >
+                    <Text style={styles.datePickLabel}>Início</Text>
+                    <Text style={[styles.datePickVal, { color: colors.textDark }]}>
+                      {localStartDate.toLocaleDateString('pt-BR')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <Feather name="arrow-right" size={16} color={isDarkMode ? '#FFFFFF' : '#1C2434'} style={{ alignSelf: 'center' }} />
+
+                  {/* Botão Data Fim */}
+                  <TouchableOpacity 
+                    style={[styles.datePickRow, { backgroundColor: isDarkMode ? '#1E1E24' : '#F5F6FA' }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setPickerMode('range_end');
+                      setShowPicker(true);
+                    }}
+                  >
+                    <Text style={styles.datePickLabel}>Fim</Text>
+                    <Text style={[styles.datePickVal, { color: colors.textDark }]}>
+                      {localEndDate.toLocaleDateString('pt-BR')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Botão de Confirmar Período */}
+                <TouchableOpacity 
+                  style={[styles.whiteModalBtnConfirm, { backgroundColor: '#25BE36', marginTop: 12 }]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    let start = new Date(localStartDate);
+                    let end = new Date(localEndDate);
+
+                    if (start.getTime() > end.getTime()) {
+                      const t = start;
+                      start = end;
+                      end = t;
+                    }
+
+                    // Salva backups
+                    setPrevStartDate(startDate);
+                    setPrevEndDate(endDate);
+                    setPrevIsRange(isRange);
+                    setPrevHasFiltered(hasFiltered);
+
+                    setStartDate(start);
+                    setEndDate(end);
+                    setIsRange(true);
+                    setHasFiltered(true);
+                    setShowFilterOptionModal(false);
+                  }}
+                >
+                  <Text style={styles.whiteModalBtnTextConfirm}>Filtrar Período</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={{ alignSelf: 'center', marginTop: 16 }}
+                activeOpacity={0.7}
+                onPress={() => setShowFilterOptionModal(false)}
+              >
+                <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Alerta de Domingo/Feriado (Telinha Branca Informativa) */}
+        <Modal visible={showSundayHolidayModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.whiteModalContainer, { backgroundColor: '#FFFFFF' }]}>
+              <View style={{ alignSelf: 'center', marginBottom: 16 }}>
+                <Feather name="alert-triangle" size={48} color="#FF3B30" />
+              </View>
+              <Text style={[styles.whiteModalTitle, { color: '#1C2434' }]}>
+                Aviso de Fechamento
+              </Text>
+              <Text style={[styles.whiteModalDesc, { color: '#767676', fontSize: 15, lineHeight: 22 }]}>
+                Este dia foi domingo/feriado, portanto seus ganhos foram 0.
+              </Text>
+              
+              <TouchableOpacity 
+                style={[styles.whiteModalBtnConfirm, { backgroundColor: '#FF3B30', marginTop: 8 }]}
+                activeOpacity={0.7}
+                onPress={handleCloseSundayHolidayModal}
+              >
+                <Text style={styles.whiteModalBtnTextConfirm}>Entendido</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* List of Sales */}
         {loading ? (
@@ -546,5 +802,101 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     color: '#48B644', // Verde um pouco mais claro
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whiteModalContainer: {
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  whiteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  whiteModalDesc: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  whiteModalBtnConfirm: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  whiteModalBtnTextConfirm: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  whiteModalBtnCancel: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  whiteModalBtnTextCancel: {
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+
+  // Dynamic picker in-modal styles
+  filterModeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    marginBottom: 16,
+  },
+  filterModeTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  filterPeriodContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+  },
+  rangeRowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  datePickRow: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: '#E3E4EB',
+  },
+  datePickLabel: {
+    fontSize: 10,
+    color: '#767676',
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  datePickVal: {
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

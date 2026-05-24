@@ -24,6 +24,7 @@ import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 
 import { CatalogHeader } from '../../components/CatalogHeader';
 
@@ -105,6 +106,9 @@ export default function SettingsScreen() {
   // Notifications toggle state
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
+  // Saudação e Horário toggle state
+  const [showGreeting, setShowGreeting] = useState(true);
+
   // Permissions state
   const [cameraPermission, setCameraPermission] = useState<string>('checking');
   const [galleryPermission, setGalleryPermission] = useState<string>('checking');
@@ -119,6 +123,7 @@ export default function SettingsScreen() {
   // === REQUEST PERMISSION STATES ===
   const [reqPermModalVisible, setReqPermModalVisible] = useState(false);
   const [reqPermFeature, setReqPermFeature] = useState<{ key: string; name: string } | null>(null);
+  const [openedFromManager, setOpenedFromManager] = useState(false);
 
   const getFeatureReqDescription = (key: string) => {
     switch (key) {
@@ -136,13 +141,17 @@ export default function SettingsScreen() {
   };
 
   const handlePressPermission = (key: string, name: string, currentStatus: string) => {
-    if (currentStatus === 'granted') {
-      setDeauthFeature({ key, name });
-      setDeauthModalVisible(true);
-    } else {
-      setReqPermFeature({ key, name });
-      setReqPermModalVisible(true);
-    }
+    setOpenedFromManager(true);
+    setShowPermissionsModal(false);
+    setTimeout(() => {
+      if (currentStatus === 'granted') {
+        setDeauthFeature({ key, name });
+        setDeauthModalVisible(true);
+      } else {
+        setReqPermFeature({ key, name });
+        setReqPermModalVisible(true);
+      }
+    }, 400);
   };
 
   const handleConfirmRequestPermission = () => {
@@ -156,6 +165,12 @@ export default function SettingsScreen() {
     if (key === 'notifications') requestNotifications();
 
     setReqPermFeature(null);
+
+    if (openedFromManager) {
+      setTimeout(() => {
+        setShowPermissionsModal(true);
+      }, 600);
+    }
   };
 
   const handleConfirmDeauth = () => {
@@ -169,11 +184,18 @@ export default function SettingsScreen() {
     }
     setDeauthModalVisible(false);
     setDeauthFeature(null);
+
+    if (openedFromManager) {
+      setTimeout(() => {
+        setShowPermissionsModal(true);
+      }, 600);
+    }
   };
 
   // Animation values using refs
   const themeSwitchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current;
   const notifSwitchAnim = React.useRef(new Animated.Value(notificationsEnabled ? 1 : 0)).current;
+  const greetingSwitchAnim = React.useRef(new Animated.Value(showGreeting ? 1 : 0)).current;
 
   const themeIconRotate = React.useRef(new Animated.Value(0)).current;
   const themeIconScale = React.useRef(new Animated.Value(1)).current;
@@ -199,6 +221,15 @@ export default function SettingsScreen() {
     }).start();
   }, [notificationsEnabled]);
 
+  React.useEffect(() => {
+    Animated.spring(greetingSwitchAnim, {
+      toValue: showGreeting ? 1 : 0,
+      useNativeDriver: false,
+      bounciness: 4,
+      speed: 12,
+    }).start();
+  }, [showGreeting]);
+
   const themeRotateInterpolate = themeIconRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
@@ -221,15 +252,40 @@ export default function SettingsScreen() {
     }
   }, [user]);
 
-  // Verificar status inicial das notificações e permissões
+  // Verificar status inicial das notificações, saudações e permissões
   React.useEffect(() => {
     const checkInitialNotifications = async () => {
       const { status } = await Notifications.getPermissionsAsync();
       setNotificationsEnabled(status === 'granted');
     };
+    const loadGreetingSetting = async () => {
+      try {
+        const val = await SecureStore.getItemAsync('show_greeting_bar');
+        if (val === 'false') {
+          setShowGreeting(false);
+          greetingSwitchAnim.setValue(0);
+        } else {
+          setShowGreeting(true);
+          greetingSwitchAnim.setValue(1);
+        }
+      } catch (e) {
+        console.log('Erro ao ler preferência de saudação:', e);
+      }
+    };
     checkInitialNotifications();
+    loadGreetingSetting();
     checkAllPermissions();
   }, []);
+
+  const handleToggleGreeting = async () => {
+    const newValue = !showGreeting;
+    setShowGreeting(newValue);
+    try {
+      await SecureStore.setItemAsync('show_greeting_bar', String(newValue));
+    } catch (e) {
+      console.log('Erro ao salvar preferência de saudação:', e);
+    }
+  };
 
   // Buscar telefone do Supabase
   React.useEffect(() => {
@@ -350,6 +406,7 @@ export default function SettingsScreen() {
       Alert.alert('Notificações', 'Você desativou as notificações.');
     } else {
       if (notificationsPermission !== 'granted') {
+        setOpenedFromManager(false);
         setReqPermFeature({ key: 'notifications', name: 'Notificações Push' });
         setReqPermModalVisible(true);
         return;
@@ -720,6 +777,30 @@ export default function SettingsScreen() {
             />
           </View>
 
+          {/* Saudação e Horário */}
+          <View style={{ gap: 4 }}>
+            <View style={styles.toggleRow}>
+              <View style={styles.iconBoxAnim}>
+                <Feather
+                  name="clock"
+                  size={22}
+                  color={isDarkMode ? '#FFC107' : '#EA841E'}
+                />
+              </View>
+              <Text style={styles.optionLabel}>Saudação e Horário</Text>
+              <View style={styles.toggleSpacer} />
+              <CustomSwitch
+                active={showGreeting}
+                onPress={handleToggleGreeting}
+                colorActive={colors.primary}
+                animValue={greetingSwitchAnim}
+              />
+            </View>
+            <Text style={[styles.toggleSubtitle, { color: isDarkMode ? '#A8A8B3' : '#A2AAB8' }]}>
+              Exibe a barra de saudações e funcionamento no catálogo
+            </Text>
+          </View>
+
           {/* Permissão */}
           <View style={styles.toggleRow}>
             <Animated.View style={[styles.iconBoxAnim, { transform: [{ scale: permIconScale }] }]}>
@@ -1083,7 +1164,14 @@ export default function SettingsScreen() {
             <View style={styles.whiteModalButtons}>
               <TouchableOpacity
                 style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
-                onPress={() => setDeauthModalVisible(false)}
+                onPress={() => {
+                  setDeauthModalVisible(false);
+                  if (openedFromManager) {
+                    setTimeout(() => {
+                      setShowPermissionsModal(true);
+                    }, 400);
+                  }
+                }}
               >
                 <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Não</Text>
               </TouchableOpacity>
@@ -1111,7 +1199,14 @@ export default function SettingsScreen() {
             <View style={styles.whiteModalButtons}>
               <TouchableOpacity
                 style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
-                onPress={() => setReqPermModalVisible(false)}
+                onPress={() => {
+                  setReqPermModalVisible(false);
+                  if (openedFromManager) {
+                    setTimeout(() => {
+                      setShowPermissionsModal(true);
+                    }, 400);
+                  }
+                }}
               >
                 <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
               </TouchableOpacity>
@@ -1254,6 +1349,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  toggleSubtitle: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    marginLeft: 45,
+    marginTop: -2,
+    marginBottom: 8,
   },
   alterarTextLink: {
     fontSize: 13,

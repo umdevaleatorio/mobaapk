@@ -70,6 +70,7 @@ export default function ClientTabs() {
     };
 
     fetchDeliveryStatus();
+    (global as any).refreshDeliveryTabs = fetchDeliveryStatus;
 
     // Sincronização em tempo real (Supabase Realtime)
     const channel = supabase
@@ -87,6 +88,7 @@ export default function ClientTabs() {
 
     return () => {
       supabase.removeChannel(channel);
+      (global as any).refreshDeliveryTabs = undefined;
     };
   }, []);
 
@@ -141,7 +143,12 @@ const tabConfigs: Record<string, Record<string, { Icon: any; Label: any; labelW:
  * - Ícones: 32x32
  * - Labels: SVGs com tamanho exato do Figma
  */
-function CustomTabBar({ state, navigation }: any) {
+function CustomTabBar({ state, descriptors, navigation }: any) {
+  // Ocultar barra inferior quando o mapa estiver em modo de rastreamento (mapa expandido)
+  const activeRoute = state.routes[state.index];
+  const isMapTracking = activeRoute.name === 'Mapa' && activeRoute.params?.trackingOrderId;
+  if (isMapTracking) return null;
+
   const { isDarkMode } = useTheme();
   const [tabPositions, setTabPositions] = React.useState<Record<number, { x: number; width: number }>>({});
   const translateX = React.useRef(new Animated.Value(0)).current;

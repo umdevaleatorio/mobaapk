@@ -10,35 +10,43 @@ interface FilterContextType {
 
 const FilterContext = createContext<FilterContextType>({
   selectedCategories: [],
-  toggleCategory: () => {},
+  toggleCategory: () => { },
   searchText: '',
-  setSearchText: () => {},
-  clearFilters: () => {},
+  setSearchText: () => { },
+  clearFilters: () => { },
 });
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Ração': ['ração', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium'],
-  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'isca', 'carretilha'],
-  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste'],
+  'Ração': ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'],
+  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'],
+  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'],
   'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario']
 };
 
-export function getProductCategory(name: string): string | null {
-  const normalized = name.toLowerCase();
+export function getProductCategory(product: any): string | null {
+  if (!product) return null;
+  const name = (product.name || '').toLowerCase();
+  const description = (product.description || '').toLowerCase();
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some(keyword => normalized.includes(keyword))) {
+    if (keywords.some(keyword => name.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase()))) {
       return category;
     }
   }
   return null;
 }
 
-export function isProductInCategories(productName: string, selected: string[]): boolean {
-  if (selected.length === 0) return true;
-  const normalized = productName.toLowerCase();
+export function isProductInCategories(product: any, selected: string[]): boolean {
+  if (!selected || selected.length === 0) return true;
+  if (!product) return false;
+  const name = (product.name || '').toLowerCase();
+  const description = (product.description || '').toLowerCase();
+
   return selected.some(category => {
     const keywords = CATEGORY_KEYWORDS[category] || [category.toLowerCase()];
-    return keywords.some(keyword => normalized.includes(keyword));
+    return keywords.some(keyword =>
+      name.includes(keyword.toLowerCase()) ||
+      description.includes(keyword.toLowerCase())
+    );
   });
 }
 

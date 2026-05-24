@@ -31,46 +31,73 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
 
   useEffect(() => {
-    initDB().then(database => {
-      setDb(database);
-      loadCart(database);
-    });
+    initDB()
+      .then(database => {
+        setDb(database);
+        loadCart(database);
+      })
+      .catch(err => {
+        console.error('Failed to initialize SQLite database in CartContext:', err);
+      });
   }, []);
 
   const loadCart = async (database: SQLite.SQLiteDatabase) => {
-    const allRows = await database.getAllAsync<CartItem>('SELECT * FROM cart');
-    setCart(allRows);
+    try {
+      const allRows = await database.getAllAsync<CartItem>('SELECT * FROM cart');
+      setCart(allRows || []);
+    } catch (error) {
+      console.error('Failed to load cart from SQLite:', error);
+    }
   };
 
   const addToCart = async (product: any, qty: number = 1) => {
-    if (!db) return;
-    
-    // Verifica primeiro direto no banco para evitar conflitos (race conditions de async state)
-    const existing: any = await db.getFirstAsync('SELECT * FROM cart WHERE id = ?', [product.id]);
-    
-    if (existing) {
-      const newQty = existing.quantity + qty;
-      await db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [newQty, product.id]);
-    } else {
-      await db.runAsync(
-        'INSERT INTO cart (id, name, price, quantity, image_url) VALUES (?, ?, ?, ?, ?)',
-        [product.id, product.name, product.price, qty, product.image_url ?? '']
-      );
+    if (!db) {
+      console.warn('Database is not initialized yet in CartContext.');
+      return;
     }
     
-    await loadCart(db);
+    try {
+      // Verifica primeiro direto no banco para evitar conflitos (race conditions de async state)
+      const existing: any = await db.getFirstAsync('SELECT * FROM cart WHERE id = ?', [product.id]);
+      
+      if (existing) {
+        const newQty = existing.quantity + qty;
+        if (newQty <= 0) {
+          await db.runAsync('DELETE FROM cart WHERE id = ?', [product.id]);
+        } else {
+          await db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [newQty, product.id]);
+        }
+      } else if (qty > 0) {
+        await db.runAsync(
+          'INSERT INTO cart (id, name, price, quantity, image_url) VALUES (?, ?, ?, ?, ?)',
+          [product.id, product.name, product.price, qty, product.image_url ?? '']
+        );
+      }
+      
+      await loadCart(db);
+    } catch (error) {
+      console.error('Error adding item to cart SQLite:', error);
+    }
   };
 
   const removeFromCart = async (id: string) => {
     if (!db) return;
-    await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
-    await loadCart(db);
+    try {
+      await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
+      await loadCart(db);
+    } catch (error) {
+      console.error('Error removing item from cart SQLite:', error);
+    }
   };
 
   const clearCart = async () => {
     if (!db) return;
-    await db.runAsync('DELETE FROM cart');
-    await loadCart(db);
+    try {
+      await db.runAsync('DELETE FROM cart');
+      await loadCart(db);
+    } catch (error) {
+      console.error('Error clearing cart SQLite:', error);
+    }
   };
 
   const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity } from 'react-native';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { CatalogHeader } from '../../components/CatalogHeader';
 import { useTheme } from '../../contexts/ThemeContext';
+import { supabase } from '../../../data/datasources/supabase/client';
 
 // === IMPORTAÇÃO DOS SVGs (assets/tela12) ===
 
@@ -63,6 +64,43 @@ export default function TrackingScreen({ navigation }: any) {
   const { toggleMenu } = useUserMenu();
   const [searchText, setSearchText] = useState('');
   const { isDarkMode, colors } = useTheme();
+  const [deliveryActive, setDeliveryActive] = useState(true);
+
+  // Sincronizar status de frete ativo/inativo na barra inferior
+  useEffect(() => {
+    const fetchDeliveryStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('delivery_active')
+          .maybeSingle();
+        if (data && !error && data.delivery_active !== undefined) {
+          setDeliveryActive(data.delivery_active);
+        }
+      } catch (e) {
+        console.log('Error fetching delivery active in tracking:', e);
+      }
+    };
+
+    fetchDeliveryStatus();
+
+    const channel = supabase
+      .channel('store_settings_tracking_tabs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).delivery_active !== undefined) {
+            setDeliveryActive((payload.new as any).delivery_active);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -250,22 +288,26 @@ export default function TrackingScreen({ navigation }: any) {
           
           <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
-          <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
-              {isDarkMode ? (
-                <MapIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
-              ) : (
-                <MapIcon8 width={32} height={32} />
-              )}
-            </View>
-            {isDarkMode ? (
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Mapa</Text>
-            ) : (
-              <MapaLabel8 width={32} height={12} />
-            )}
-          </TouchableOpacity>
-          
-          <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+          {deliveryActive && (
+            <>
+              <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
+                <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
+                  {isDarkMode ? (
+                    <MapIcon8 width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" />
+                  ) : (
+                    <MapIcon8 width={32} height={32} />
+                  )}
+                </View>
+                {isDarkMode ? (
+                  <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF' }}>Mapa</Text>
+                ) : (
+                  <MapaLabel8 width={32} height={12} />
+                )}
+              </TouchableOpacity>
+              
+              <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
+            </>
+          )}
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
             <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBgInactive}>
