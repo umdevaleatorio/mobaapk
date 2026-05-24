@@ -321,6 +321,7 @@ export default function AdminSettingsScreen() {
   const notifIconRotate = React.useRef(new Animated.Value(0)).current;
   const permIconScale = React.useRef(new Animated.Value(1)).current;
   const greetingIconRotate = React.useRef(new Animated.Value(0)).current;
+  const greetingIconScale = React.useRef(new Animated.Value(1)).current;
 
   // Spring switch animation triggers
   useEffect(() => {
@@ -370,8 +371,8 @@ export default function AdminSettingsScreen() {
   });
 
   const greetingRotateInterpolate = greetingIconRotate.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: ['0deg', '-20deg', '20deg', '-10deg', '0deg'],
+    inputRange: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    outputRange: ['0deg', '-30deg', '30deg', '-30deg', '30deg', '-15deg', '15deg', '-15deg', '15deg', '0deg', '0deg'],
   });
 
   // Sincronizar status do e-mail com pendências do Supabase
@@ -412,11 +413,19 @@ export default function AdminSettingsScreen() {
 
   const handleToggleGreeting = async () => {
     greetingIconRotate.setValue(0);
-    Animated.timing(greetingIconRotate, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    greetingIconScale.setValue(1);
+    
+    Animated.parallel([
+      Animated.timing(greetingIconRotate, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(greetingIconScale, { toValue: 1.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(greetingIconScale, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    ]).start();
 
     const newValue = !showGreeting;
     setShowGreeting(newValue);
@@ -957,7 +966,7 @@ export default function AdminSettingsScreen() {
             {/* Saudação e Horário */}
             <View style={{ gap: 4 }}>
               <View style={styles.toggleRow}>
-              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: greetingRotateInterpolate }] }]}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: greetingRotateInterpolate }, { scale: greetingIconScale }] }]}>
                   <Feather
                     name="clock"
                     size={22}
