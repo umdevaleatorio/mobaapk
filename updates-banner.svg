@@ -51,7 +51,7 @@
     </style>
   </defs>
   <g class="svg-container">
-    <g transform="translate(98, 10) scale(4.5)" style="image-rendering: pixelated;">
+    <g transform="translate(61, 10) scale(4.5)" style="image-rendering: pixelated;">
       <g class="tail-wag">
         <rect x="15" y="16" width="2" height="1" fill="#E96310" />
         <rect x="16" y="15" width="2" height="1" fill="#E96310" />
