@@ -700,6 +700,7 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: 12.5,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   domingoFeriadoCard: {
     flexDirection: 'row',
