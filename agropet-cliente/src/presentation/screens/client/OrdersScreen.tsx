@@ -35,6 +35,18 @@ import MapaLabel8 from '../../assets/tela11/barra de baixo/Mapa.svg';
 import CarrinhoLabel8 from '../../assets/tela11/barra de baixo/Carrinho.svg';
 import OpcoesLabel8 from '../../assets/tela11/barra de baixo/Opções.svg';
 
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
+
 export default function OrdersScreen({ navigation }: any) {
   const { toggleMenu } = useUserMenu();
   const { user } = useContext(AuthContext);
@@ -231,7 +243,7 @@ export default function OrdersScreen({ navigation }: any) {
           orderId: order.id,
           productId: item.product_id,
           name: item.products?.name || 'Produto',
-          imageUrl: item.products?.image_url,
+          imageUrl: getFirstImageUrl(item.products?.image_url),
         });
       });
     }
@@ -292,7 +304,7 @@ export default function OrdersScreen({ navigation }: any) {
             ) : (
               activeOrders.map(order => {
                 const firstItem = order.order_items?.[0];
-                const imageUrl = firstItem?.products?.image_url;
+                const imageUrl = getFirstImageUrl(firstItem?.products?.image_url);
 
                 return (
                   <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB', zIndex: (activeDropdownId === order.id || activeCancelDropdownId === order.id) ? 9999 : 10 }]}>
@@ -389,7 +401,7 @@ export default function OrdersScreen({ navigation }: any) {
             ) : (
               pastOrders.map(order => {
                 const firstItem = order.order_items?.[0];
-                const imageUrl = firstItem?.products?.image_url;
+                const imageUrl = getFirstImageUrl(firstItem?.products?.image_url);
 
                 return (
                   <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
@@ -453,7 +465,7 @@ export default function OrdersScreen({ navigation }: any) {
             ) : (
               activeOrders.map(order => {
                  const firstItem = order.order_items?.[0];
-                 const imageUrl = firstItem?.products?.image_url;
+                 const imageUrl = getFirstImageUrl(firstItem?.products?.image_url);
 
                  return (
                   <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB', zIndex: (activeDropdownId === order.id || activeCancelDropdownId === order.id) ? 9999 : 10 }]}>
@@ -620,7 +632,7 @@ export default function OrdersScreen({ navigation }: any) {
             ) : (
               pastOrders.map(order => {
                 const firstItem = order.order_items?.[0];
-                const imageUrl = firstItem?.products?.image_url;
+                const imageUrl = getFirstImageUrl(firstItem?.products?.image_url);
 
                 return (
                   <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>

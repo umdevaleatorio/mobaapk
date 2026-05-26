@@ -8,6 +8,7 @@ import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
 import AdminSalesHistoryScreen from '../screens/admin/AdminSalesHistoryScreen';
 import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetailScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminConsultSalesScreen from '../screens/admin/AdminConsultSalesScreen';
 
 const Stack = createStackNavigator();
 
@@ -21,6 +22,7 @@ export default function AdminStack() {
       <Stack.Screen name="AdminSalesHistoryScreen" component={AdminSalesHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AdminOrderDetailScreen" component={AdminOrderDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AdminDashboardScreen" component={AdminDashboardScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminConsultSalesScreen" component={AdminConsultSalesScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

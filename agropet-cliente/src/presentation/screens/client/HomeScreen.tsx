@@ -35,6 +35,65 @@ const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const PHOTO_WIDTH = CARD_WIDTH - 20;
 const PHOTO_HEIGHT = (PHOTO_WIDTH * 120) / 129;
 
+function getAllImageUrls(url: string | null | undefined): string[] {
+  if (!url) return [];
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(u => !!u);
+    } catch (_) {}
+  }
+  return [url];
+}
+
+function AnimatedProductImage({ imageUrl, style }: { imageUrl: string | null | undefined, style: any }) {
+  const { isDarkMode } = useTheme();
+  const urls = React.useMemo(() => getAllImageUrls(imageUrl), [imageUrl]);
+  const [index, setIndex] = React.useState(0);
+  const opacity = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    if (urls.length <= 1) {
+      setIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start(() => {
+        setIndex(prev => (prev + 1) % urls.length);
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [urls]);
+
+  if (urls.length === 0) {
+    return (
+      <View style={[style, { backgroundColor: isDarkMode ? '#3A3A44' : '#d9d9d9', justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: isDarkMode ? '#888' : '#999', fontSize: 11 }}>Sem Imagem</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Animated.Image 
+      source={{ uri: urls[index] }} 
+      style={[style, { opacity }]} 
+      resizeMode="cover" 
+    />
+  );
+}
+
 export default function HomeScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
@@ -347,13 +406,7 @@ export default function HomeScreen() {
     ]}>
       {/* Foto do produto */}
       <View style={styles.productImageWrapper}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
-        ) : (
-          <View style={[styles.productImage, styles.noImage, { backgroundColor: isDarkMode ? '#3A3A44' : '#d9d9d9' }]}>
-            <Text style={[styles.noImageText, { color: isDarkMode ? '#888' : '#999' }]}>Sem Imagem</Text>
-          </View>
-        )}
+        <AnimatedProductImage imageUrl={item.image_url} style={styles.productImage} />
       </View>
 
       {/* Nome do produto */}
@@ -496,7 +549,7 @@ export default function HomeScreen() {
           <Text style={[styles.greetingText, { color: colors.textDark }]}>
             {greeting}
           </Text>
-          <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#25BE36' : '#FF3B30' }]}>
+          <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#4A90D9' : '#FF3B30' }]}>
             {shopStatus.isOpen ? shopStatus.countdownText : `Atualmente estamos fechados.\n${shopStatus.countdownText}`}
           </Text>
         </Animated.View>

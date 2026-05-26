@@ -8,6 +8,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../contexts/ThemeContext';
 import { isHoliday } from '../../../utils/shopHours';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // Top SVGs
 import HojeLabelSvg from '../../assets/tela6/resumos/Hoje_.svg';
@@ -38,6 +40,18 @@ import OpcoesLabel8 from '../../assets/tela5/barra de baixo/Opções.svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
+
 export default function AdminSalesHistoryScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
@@ -49,6 +63,7 @@ export default function AdminSalesHistoryScreen() {
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [isRange, setIsRange] = useState(false);
   const [hasFiltered, setHasFiltered] = useState(true); // Default to filtered today
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Backup states for Sunday/Holiday automatic reversion
   const [prevStartDate, setPrevStartDate] = useState<Date>(new Date());
@@ -78,9 +93,54 @@ export default function AdminSalesHistoryScreen() {
     return `R$ ${val.toFixed(2).replace('.', ',')}`;
   };
 
+  // Load persisted dates from AsyncStorage on mount
   useEffect(() => {
+    const loadPersistedDates = async () => {
+      try {
+        const storedStart = await AsyncStorage.getItem('admin_history_startDate');
+        const storedEnd = await AsyncStorage.getItem('admin_history_endDate');
+        const storedIsRange = await AsyncStorage.getItem('admin_history_isRange');
+        const storedHasFiltered = await AsyncStorage.getItem('admin_history_hasFiltered');
+
+        if (storedStart) setStartDate(new Date(storedStart));
+        if (storedEnd) setEndDate(new Date(storedEnd));
+        if (storedIsRange) setIsRange(storedIsRange === 'true');
+        if (storedHasFiltered) setHasFiltered(storedHasFiltered === 'true');
+      } catch (error) {
+        console.error('Error loading persisted history dates:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    loadPersistedDates();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isLoaded) {
+        fetchSales();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const saveDates = async () => {
+      try {
+        await AsyncStorage.setItem('admin_history_startDate', startDate.toISOString());
+        await AsyncStorage.setItem('admin_history_endDate', endDate.toISOString());
+        await AsyncStorage.setItem('admin_history_isRange', String(isRange));
+        await AsyncStorage.setItem('admin_history_hasFiltered', String(hasFiltered));
+      } catch (error) {
+        console.error('Error persisting history dates:', error);
+      }
+    };
+    saveDates();
+
     fetchSales();
-  }, [startDate, endDate, isRange, hasFiltered]);
+  }, [startDate, endDate, isRange, hasFiltered, isLoaded]);
 
   const fetchSales = async () => {
     try {
@@ -109,6 +169,7 @@ export default function AdminSalesHistoryScreen() {
           )
         `)
         .eq('status', 'completed')
+        .neq('delivery_address', 'Venda Física PDV')
         .order('created_at', { ascending: false });
 
       if (hasFiltered) {
@@ -487,7 +548,7 @@ export default function AdminSalesHistoryScreen() {
         ) : (
           orders.map((order, index) => {
             const firstItem = order.order_items?.[0];
-            const productImg = firstItem?.products?.image_url;
+            const productImg = getFirstImageUrl(firstItem?.products?.image_url);
 
             return (
               <View key={order.id} style={[styles.orderCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>

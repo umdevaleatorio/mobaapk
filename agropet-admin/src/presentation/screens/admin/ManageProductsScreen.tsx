@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -20,6 +21,18 @@ import { supabase } from '../../../data/datasources/supabase/client';
 import AdminHeader from '../../components/AdminHeader';
 import { AdminUserMenu } from '../../components/AdminUserMenu';
 import { useTheme } from '../../contexts/ThemeContext';
+
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
 
 // Button SVGs
 import CheckIcon from '../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
@@ -68,10 +81,28 @@ export default function ManageProductsScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [hasError, setHasError] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [alertYellowFilter, setAlertYellowFilter] = useState(false);
+  const [alertRedFilter, setAlertRedFilter] = useState(false);
+  
+  // Unified modal filter state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [tempStatusFilter, setTempStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [tempAlertYellowFilter, setTempAlertYellowFilter] = useState(false);
+  const [tempAlertRedFilter, setTempAlertRedFilter] = useState(false);
   
   // Selection mode for mass deletion
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [dismissedProductIds, setDismissedProductIds] = useState<Set<string>>(new Set());
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+
+  const dismissAlert = (id: string) => {
+    setDismissedProductIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(id);
+      return newSet;
+    });
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -96,6 +127,7 @@ export default function ManageProductsScreen() {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      setDismissedProductIds(new Set());
       const paramsSearchText = route.params?.searchText;
       const paramsCategories = route.params?.categories;
 
@@ -105,6 +137,8 @@ export default function ManageProductsScreen() {
         setSearchText(text);
         setActiveCategories(cats);
         setStatusFilter('Todos');
+        setAlertYellowFilter(false);
+        setAlertRedFilter(false);
         fetchProducts();
         // Clear navigation params
         navigation.setParams({ searchText: undefined, categories: undefined });
@@ -112,28 +146,98 @@ export default function ManageProductsScreen() {
         setSearchText('');
         setActiveCategories([]);
         setStatusFilter('Todos');
+        setAlertYellowFilter(false);
+        setAlertRedFilter(false);
         fetchProducts();
       }
     });
     return unsubscribe;
   }, [navigation, route.params]);
 
-  const filteredProducts = products.filter(p => {
+  const handleOpenFilterModal = () => {
+    setTempStatusFilter(statusFilter);
+    setTempAlertYellowFilter(alertYellowFilter);
+    setTempAlertRedFilter(alertRedFilter);
+    setShowFilterModal(true);
+  };
+
+  const handleSelectStatus = (status: 'Todos' | 'Ativos' | 'Inativos') => {
+    setTempStatusFilter(status);
+    if (status === 'Inativos') {
+      setTempAlertYellowFilter(false);
+      setTempAlertRedFilter(false);
+    }
+  };
+
+  const handleToggleYellow = () => {
+    if (tempStatusFilter === 'Inativos') return;
+    setTempAlertYellowFilter(!tempAlertYellowFilter);
+  };
+
+  const handleToggleRed = () => {
+    if (tempStatusFilter === 'Inativos') return;
+    setTempAlertRedFilter(!tempAlertRedFilter);
+  };
+
+  const handleApplyFilters = () => {
+    setStatusFilter(tempStatusFilter);
+    setAlertYellowFilter(tempAlertYellowFilter);
+    setAlertRedFilter(tempAlertRedFilter);
+    setShowFilterModal(false);
+  };
+
+  const filteredProductsRaw = products.filter(p => {
     const name = (p.name || '').toLowerCase();
     const desc = (p.description || '').toLowerCase();
     const query = searchText.toLowerCase();
     const matchesSearch = name.includes(query) || desc.includes(query);
     const matchesCategory = isProductInCategories(p, activeCategories);
     const isActive = p.active !== false;
+    const stock = p.stock || 0;
     
+    // 1. Status Filter
     if (statusFilter === 'Ativos') {
-      return matchesSearch && matchesCategory && isActive;
+      if (!isActive) return false;
+    } else if (statusFilter === 'Inativos') {
+      if (isActive) return false;
     }
-    if (statusFilter === 'Inativos') {
-      return matchesSearch && matchesCategory && !isActive;
+    
+    // 2. Alert Filters
+    if (alertYellowFilter || alertRedFilter) {
+      const isRed = stock < 10;
+      const isYellow = stock >= 10 && stock <= 29;
+      
+      if (alertYellowFilter && alertRedFilter) {
+        if (!isRed && !isYellow) return false;
+      } else if (alertRedFilter) {
+        if (!isRed) return false;
+      } else if (alertYellowFilter) {
+        if (!isYellow) return false;
+      }
     }
+    
     return matchesSearch && matchesCategory;
   });
+
+  // Prioritize Red alerts first, then Yellow alerts, when warnings are enabled
+  const filteredProducts = (alertYellowFilter || alertRedFilter)
+    ? [...filteredProductsRaw].sort((a, b) => {
+        const stockA = a.stock || 0;
+        const stockB = b.stock || 0;
+        
+        const isRedA = stockA < 10;
+        const isRedB = stockB < 10;
+        const isYellowA = stockA >= 10 && stockA <= 29;
+        const isYellowB = stockB >= 10 && stockB <= 29;
+        
+        if (isRedA && !isRedB) return -1;
+        if (!isRedA && isRedB) return 1;
+        if (isYellowA && !isYellowB && !isRedB) return -1;
+        if (!isYellowA && isYellowB && !isRedA) return 1;
+        
+        return 0;
+      })
+    : filteredProductsRaw;
 
   const toggleProductStatus = async (product: any) => {
     const newStatus = !product.active;
@@ -171,6 +275,60 @@ export default function ManageProductsScreen() {
     );
   };
 
+  const handleSelectAllBtn = () => {
+    const allFilteredIds = filteredProducts.map(p => p.id);
+    const areAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedProductIds.has(id));
+    
+    if (areAllSelected) {
+      setSelectedProductIds(new Set());
+    } else {
+      setSelectedProductIds(new Set(allFilteredIds));
+      setSelectionMode(true);
+    }
+  };
+
+  const handleDeactivateAll = () => {
+    const activeVisibleProducts = filteredProducts.filter(p => p.active !== false);
+    if (activeVisibleProducts.length === 0) {
+      Alert.alert('Aviso', 'Não há produtos ativos na lista filtrada para desativar.');
+      return;
+    }
+
+    Alert.alert(
+      'Desativar Produtos',
+      `Tem certeza de que deseja desativar todos os ${activeVisibleProducts.length} produtos ativos filtrados simultaneamente?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desativar Todos',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            const activeIds = activeVisibleProducts.map(p => p.id);
+            try {
+              const { error } = await supabase
+                .from('products')
+                .update({ active: false })
+                .in('id', activeIds);
+
+              if (!error) {
+                setProducts(prev => prev.map(p => activeIds.includes(p.id) ? { ...p, active: false } : p));
+                Alert.alert('Sucesso', 'Todos os produtos filtrados foram desativados.');
+              } else {
+                Alert.alert('Erro', 'Não foi possível desativar os produtos.');
+              }
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Erro', 'Ocorreu um erro ao desativar os produtos.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleMassDelete = () => {
     if (!selectionMode) {
       setSelectionMode(true);
@@ -183,33 +341,32 @@ export default function ManageProductsScreen() {
       return;
     }
 
-    Alert.alert(
-      'Atenção',
-      `Tem certeza que deseja excluir ${selectedProductIds.size} produtos selecionados?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            const { error } = await supabase
-              .from('products')
-              .delete()
-              .in('id', Array.from(selectedProductIds));
-              
-            if (!error) {
-              setProducts(prev => prev.filter(p => !selectedProductIds.has(p.id)));
-              setSelectedProductIds(new Set());
-              setSelectionMode(false);
-            } else {
-              Alert.alert('Erro', 'Ocorreu um erro na exclusão em massa.');
-            }
-            setLoading(false);
-          }
-        }
-      ]
-    );
+    // Show the custom high-fidelity red warning modal instead of standard Alert!
+    setShowConfirmDeleteModal(true);
+  };
+
+  const confirmMassDelete = async () => {
+    setShowConfirmDeleteModal(false);
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .in('id', Array.from(selectedProductIds));
+        
+      if (!error) {
+        setProducts(prev => prev.filter(p => !selectedProductIds.has(p.id)));
+        setSelectedProductIds(new Set());
+        setSelectionMode(false);
+      } else {
+        Alert.alert('Erro', 'Ocorreu um erro na exclusão em massa.');
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Erro', 'Ocorreu um erro ao realizar a exclusão.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleSelection = (id: string) => {
@@ -226,6 +383,8 @@ export default function ManageProductsScreen() {
   const renderProductCard = ({ item }: { item: any }) => {
     const isSelected = selectedProductIds.has(item.id);
     const isActive = item.active !== false;
+    const stock = item.stock || 0;
+    const stockColor = stock < 10 ? '#FF3B30' : (stock <= 29 ? '#FFE082' : '#00BFA5');
 
     return (
       <View style={[
@@ -271,7 +430,7 @@ export default function ManageProductsScreen() {
           {/* Product Photo */}
           <View style={styles.productImageWrapper}>
             {item.image_url ? (
-              <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
+              <Image source={{ uri: getFirstImageUrl(item.image_url) || '' }} style={styles.productImage} resizeMode="cover" />
             ) : (
               <View style={[styles.productImage, styles.noImage, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                 <Text style={[styles.noImageText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Sem{'\n'}Foto</Text>
@@ -294,7 +453,7 @@ export default function ManageProductsScreen() {
           {/* Quantidade column */}
           <View style={styles.quantityColumn}>
             <Text style={[styles.columnHeader, { color: colors.textDark }]}>Quantidade</Text>
-            <Text style={[styles.quantityValue, { color: colors.textDark }]}>{item.stock || 0}</Text>
+            <Text style={[styles.quantityValue, { color: stockColor }]}>{stock}</Text>
           </View>
 
           {/* Separator 3 */}
@@ -322,12 +481,108 @@ export default function ManageProductsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Warning alerts directly under the cardRow */}
+        {!dismissedProductIds.has(item.id) && (
+          stock < 10 ? (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderWidth: 1,
+              borderRadius: 10,
+              backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0',
+              borderColor: '#FF3B30',
+              marginHorizontal: 8,
+              marginBottom: 8,
+              marginTop: 4,
+              position: 'relative',
+            }}>
+              <Feather name="alert-circle" size={14} color="#FF3B30" style={{ marginRight: 6 }} />
+              <Text style={{
+                fontSize: 11,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#FF8A8A' : '#D32F2F',
+                flexShrink: 1,
+                lineHeight: 15,
+                paddingRight: 16,
+              }}>
+                {`${item.name} está esgotando, adicione mais ao estoque para manter ativo ou espere acabar para auto-desativação.`}
+              </Text>
+              <TouchableOpacity
+                onPress={() => dismissAlert(item.id)}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  top: 8,
+                  padding: 2,
+                }}
+              >
+                <Feather name="x" size={14} color={isDarkMode ? '#FF8A8A' : '#D32F2F'} />
+              </TouchableOpacity>
+            </View>
+          ) : stock <= 29 ? (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderWidth: 1,
+              borderRadius: 10,
+              backgroundColor: isDarkMode ? '#2C2B1D' : '#FFFDE6',
+              borderColor: '#FFB300',
+              marginHorizontal: 8,
+              marginBottom: 8,
+              marginTop: 4,
+              position: 'relative',
+            }}>
+              <Feather name="alert-triangle" size={14} color="#FFB300" style={{ marginRight: 6 }} />
+              <Text style={{
+                fontSize: 11,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#FFE082' : '#B78103',
+                flexShrink: 1,
+                lineHeight: 15,
+                paddingRight: 16,
+              }}>
+                {`${item.name} está com estoque moderado (${stock} unidades). Considere reabastecer em breve.`}
+              </Text>
+              <TouchableOpacity
+                onPress={() => dismissAlert(item.id)}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  top: 8,
+                  padding: 2,
+                }}
+              >
+                <Feather name="x" size={14} color={isDarkMode ? '#FFE082' : '#B78103'} />
+              </TouchableOpacity>
+            </View>
+          ) : null
+        )}
       </View>
     );
   };
 
   const labelColor = isDarkMode ? '#FFFFFF' : '#8A7268';
   const sepColor = isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268';
+
+  const getFilterLabel = () => {
+    let parts: string[] = [];
+    if (statusFilter !== 'Todos') {
+      parts.push(statusFilter);
+    }
+    if (alertYellowFilter) {
+      parts.push('Moderado');
+    }
+    if (alertRedFilter) {
+      parts.push('Crítico');
+    }
+    if (parts.length === 0) return 'Filtro';
+    return parts.join(' + ');
+  };
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
@@ -340,10 +595,15 @@ export default function ManageProductsScreen() {
       <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }]}>
         <View style={[styles.filterPill, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
           {/* FiltroIcon + texto */}
-          <View style={styles.filterBtn}>
+          <TouchableOpacity 
+            style={styles.filterBtn}
+            onPress={handleOpenFilterModal}
+            activeOpacity={0.7}
+          >
             <Feather name="sliders" size={12} color={labelColor} />
-            <Text style={[styles.filterBtnText, { color: labelColor }]}>Filtro</Text>
-          </View>
+            <Text style={[styles.filterBtnText, { color: labelColor }]}>{getFilterLabel()}</Text>
+            <Feather name="chevron-down" size={12} color={labelColor} style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
 
           <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
 
@@ -362,12 +622,12 @@ export default function ManageProductsScreen() {
               
               let tagBg = 'transparent';
               if (isSelected) {
-                tagBg = '#5B86E5';
+                tagBg = isDarkMode ? '#5B86E5' : '#E3DAD9';
               }
 
               let tagTextColor = isDarkMode ? '#FFFFFF' : '#8A7268';
               if (isSelected) {
-                tagTextColor = '#FFFFFF';
+                tagTextColor = isDarkMode ? '#FFFFFF' : '#9C3F07';
               }
 
               return (
@@ -406,13 +666,15 @@ export default function ManageProductsScreen() {
 
       {/* Action Buttons: Registrar & Excluir - bigger */}
       <View style={styles.actionButtonsRow}>
-        <TouchableOpacity 
-          style={styles.registerBtn}
-          onPress={() => navigation.navigate('ProductCreateScreen')}
-        >
-          <CheckIcon width={34} height={34} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
-          <Text style={styles.actionBtnText}>Registrar produto</Text>
-        </TouchableOpacity>
+        <View style={styles.deleteColumnContainer}>
+          <TouchableOpacity 
+            style={styles.registerBtn}
+            onPress={() => navigation.navigate('ProductCreateScreen')}
+          >
+            <CheckIcon width={34} height={34} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+            <Text style={styles.actionBtnText}>Registrar produto</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.deleteColumnContainer}>
           <TouchableOpacity 
@@ -434,50 +696,53 @@ export default function ManageProductsScreen() {
               <Text style={styles.actionBtnText}>Excluir produto</Text>
             )}
           </TouchableOpacity>
-
-          {selectionMode && (
-            <TouchableOpacity 
-              style={[styles.cancelSelectionBtn, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]} 
-              onPress={() => {
-                setSelectionMode(false);
-                setSelectedProductIds(new Set());
-              }}
-            >
-              <Text style={[styles.cancelSelectionText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
-                Cancelar Seleção
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
-      {/* Status Filter Buttons */}
-      <View style={styles.statusFilterRow}>
-        {(['Todos', 'Ativos', 'Inativos'] as const).map((status) => {
-          const isSelected = statusFilter === status;
-          let btnBg = isDarkMode ? '#2E2E38' : '#EAEAEF';
-          let textColor = isDarkMode ? '#FFFFFF' : '#1C2434';
+      {/* Secondary Action Row: Selecionar tudo & Desativar todos / Cancelar seleção */}
+      <View style={styles.secondaryActionsRow}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleSelectAllBtn}
+          style={[styles.secondaryBtn, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}
+        >
+          <Text style={[styles.secondaryBtnText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+            {filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.has(p.id))
+              ? "Deselecionar tudo"
+              : "Selecionar tudo"
+            }
+          </Text>
+        </TouchableOpacity>
 
-          if (isSelected) {
-            textColor = '#FFFFFF';
-            if (status === 'Todos') btnBg = '#3B82F6';
-            else if (status === 'Ativos') btnBg = '#22C55E';
-            else btnBg = '#EF4444';
-          }
-
-          return (
-            <TouchableOpacity
-              key={status}
-              style={[styles.statusFilterBtn, { backgroundColor: btnBg }]}
-              onPress={() => setStatusFilter(status)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.statusFilterText, { color: textColor }]}>
-                {status}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {selectionMode ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              setSelectionMode(false);
+              setSelectedProductIds(new Set());
+            }}
+            style={[styles.secondaryBtn, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}
+          >
+            <Text style={[styles.secondaryBtnText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+              Cancelar Seleção
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleDeactivateAll}
+            style={[
+              styles.secondaryBtn, 
+              { 
+                backgroundColor: '#FFFFFF'
+              }
+            ]}
+          >
+            <Text style={[styles.secondaryBtnText, { color: '#FF3B30' }]}>
+              Desativar todos
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ========== LISTA DE PRODUTOS (vertical) ========== */}
@@ -504,6 +769,240 @@ export default function ManageProductsScreen() {
 
       {/* Padding for bottom tab bar */}
       <View style={{ height: 100 }} />
+
+      {/* ========== CUSTOM DESTRUCTIVE DELETE WARNING MODAL ========== */}
+      <Modal visible={showConfirmDeleteModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.whiteModalTitle, { color: '#FF3B30', fontSize: 18, fontWeight: 'bold' }]}>
+              Atenção: Ação Destrutiva!
+            </Text>
+            
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderWidth: 1,
+              borderRadius: 10,
+              backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0',
+              borderColor: '#FF3B30',
+              marginVertical: 15,
+            }}>
+              <Feather name="alert-circle" size={18} color="#FF3B30" style={{ marginRight: 8 }} />
+              <Text style={{
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#FF8A8A' : '#D32F2F',
+                flex: 1,
+                lineHeight: 16,
+              }}>
+                {`Tem certeza de que o proprietário quer prosseguir? Esta ação é irreversível e excluirá permanentemente os ${selectedProductIds.size} produtos selecionados do banco de dados.`}
+              </Text>
+            </View>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity 
+                style={[styles.modalConfirmBtn, { backgroundColor: '#A72424' }]}
+                activeOpacity={0.7}
+                onPress={confirmMassDelete}
+              >
+                <Text style={styles.modalConfirmText}>Sim, Excluir Definitivamente</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
+                activeOpacity={0.7}
+                onPress={() => setShowConfirmDeleteModal(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========== UNIFIED FILTER MODAL (SITUAÇÃO & ALERTA DE ESTOQUE) ========== */}
+      <Modal visible={showFilterModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Filtrar Produtos</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {/* SUBSECTION 1: SITUAÇÃO */}
+              <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01' }]}>Situação</Text>
+              
+              {['Todos', 'Ativos', 'Inativos'].map((statusOption) => {
+                const label = statusOption === 'Todos' ? 'Todos os produtos' : statusOption === 'Ativos' ? 'Somente ativos' : 'Somente inativos';
+                const isSelected = tempStatusFilter === statusOption;
+                const isDisabled = statusOption === 'Inativos' && (tempAlertYellowFilter || tempAlertRedFilter);
+
+                return (
+                  <TouchableOpacity
+                    key={statusOption}
+                    activeOpacity={isDisabled ? 1 : 0.7}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: isDarkMode ? '#3E3E4A' : '#E3E4EB',
+                      opacity: isDisabled ? 0.4 : 1,
+                    }}
+                    onPress={() => {
+                      if (!isDisabled) {
+                        handleSelectStatus(statusOption as any);
+                      }
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 14,
+                      color: isDarkMode ? '#FFFFFF' : '#1C2434',
+                      fontWeight: isSelected ? 'bold' : 'normal',
+                      flex: 1,
+                    }}>
+                      {label}
+                    </Text>
+                    <View style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? '#25BE36' : (isDarkMode ? '#888888' : '#A8A8B3'),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {isSelected && (
+                        <View style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 5,
+                          backgroundColor: '#25BE36',
+                        }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* SUBSECTION 2: ALERTA DE ESTOQUE */}
+              <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20, marginBottom: 10 }]}>Alertas de estoque</Text>
+
+              {/* Yellow Alert Option Box */}
+              <TouchableOpacity
+                activeOpacity={tempStatusFilter === 'Inativos' ? 1 : 0.7}
+                onPress={handleToggleYellow}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  backgroundColor: tempStatusFilter === 'Inativos' 
+                    ? (isDarkMode ? '#222225' : '#F0F0F2') 
+                    : (tempAlertYellowFilter 
+                        ? (isDarkMode ? '#3D381D' : '#FFEBA3') 
+                        : (isDarkMode ? '#2C2B1D' : '#FFFDE6')),
+                  borderColor: tempStatusFilter === 'Inativos' ? '#CCCCCC' : '#FFB300',
+                  marginBottom: 10,
+                  opacity: tempStatusFilter === 'Inativos' ? 0.4 : 1,
+                }}
+              >
+                <Feather name="alert-triangle" size={16} color={tempStatusFilter === 'Inativos' ? '#888888' : '#FFB300'} style={{ marginRight: 8 }} />
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  color: tempStatusFilter === 'Inativos' 
+                    ? '#888888' 
+                    : (isDarkMode ? '#FFE082' : '#B78103'),
+                  flex: 1,
+                }}>
+                  Estoque Moderado (Alerta Amarelo)
+                </Text>
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  borderWidth: 1.2,
+                  borderColor: tempStatusFilter === 'Inativos' ? '#888888' : '#FFB300',
+                  backgroundColor: tempAlertYellowFilter ? '#FFB300' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {tempAlertYellowFilter && <Feather name="check" size={12} color="#FFFFFF" />}
+                </View>
+              </TouchableOpacity>
+
+              {/* Red Alert Option Box */}
+              <TouchableOpacity
+                activeOpacity={tempStatusFilter === 'Inativos' ? 1 : 0.7}
+                onPress={handleToggleRed}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  backgroundColor: tempStatusFilter === 'Inativos' 
+                    ? (isDarkMode ? '#222225' : '#F0F0F2') 
+                    : (tempAlertRedFilter 
+                        ? (isDarkMode ? '#4D1D1E' : '#FFC7C7') 
+                        : (isDarkMode ? '#2C1D1E' : '#FFF0F0')),
+                  borderColor: tempStatusFilter === 'Inativos' ? '#CCCCCC' : '#FF3B30',
+                  marginBottom: 10,
+                  opacity: tempStatusFilter === 'Inativos' ? 0.4 : 1,
+                }}
+              >
+                <Feather name="alert-circle" size={16} color={tempStatusFilter === 'Inativos' ? '#888888' : '#FF3B30'} style={{ marginRight: 8 }} />
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  color: tempStatusFilter === 'Inativos' 
+                    ? '#888888' 
+                    : (isDarkMode ? '#FF8A8A' : '#D32F2F'),
+                  flex: 1,
+                }}>
+                  Estoque Crítico (Alerta Vermelho)
+                </Text>
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  borderWidth: 1.2,
+                  borderColor: tempStatusFilter === 'Inativos' ? '#888888' : '#FF3B30',
+                  backgroundColor: tempAlertRedFilter ? '#FF3B30' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {tempAlertRedFilter && <Feather name="check" size={12} color="#FFFFFF" />}
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Confirm / Cancel Buttons */}
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity 
+                style={[styles.modalConfirmBtn, { backgroundColor: '#25BE36' }]}
+                activeOpacity={0.7}
+                onPress={handleApplyFilters}
+              >
+                <Text style={styles.modalConfirmText}>Aplicar Filtros</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
+                activeOpacity={0.7}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Global Admin Menu Modal */}
       <AdminUserMenu />
@@ -576,7 +1075,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   registerBtn: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'row',
     backgroundColor: '#339914',
     paddingVertical: 6,
@@ -654,7 +1153,7 @@ const styles = StyleSheet.create({
   productCard: {
     backgroundColor: '#E3E4EB',
     borderRadius: 15,
-    height: 100,
+    minHeight: 100,
     marginBottom: 12,
     position: 'relative',
     justifyContent: 'center',
@@ -669,7 +1168,7 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: '100%',
+    height: 100,
     paddingRight: 30,
   },
   // Checkbox for mass select
@@ -777,28 +1276,87 @@ const styles = StyleSheet.create({
     zIndex: 10,
     padding: 6,
   },
-  statusFilterRow: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whiteModalContainer: {
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  whiteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalSubsectionHeader: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  modalButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalConfirmBtn: {
+    flex: 1.5,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
     paddingHorizontal: 12,
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 10,
     marginTop: 4,
   },
-  statusFilterBtn: {
+  secondaryBtn: {
     flex: 1,
-    height: 40,
+    height: 38,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1.5,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
   },
-  statusFilterText: {
-    fontSize: 14,
+  secondaryBtnText: {
     fontWeight: 'bold',
+    fontSize: 13,
   },
 });

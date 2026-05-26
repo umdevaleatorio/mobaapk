@@ -59,6 +59,7 @@ export default function AdminTabs() {
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
+      backBehavior="history"
       tabBar={(props) => <CustomTabBar {...props} />}
     >
       <Tab.Screen name="Home" component={AdminHomeScreen} />

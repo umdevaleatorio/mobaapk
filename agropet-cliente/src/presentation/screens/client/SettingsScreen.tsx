@@ -14,6 +14,7 @@ import {
   Animated,
   Easing,
   Linking,
+  AppState,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -116,14 +117,17 @@ export default function SettingsScreen() {
   const [notificationsPermission, setNotificationsPermission] = useState<string>('checking');
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
 
-  // === DEAUTHORIZE STATES ===
-  const [deauthModalVisible, setDeauthModalVisible] = useState(false);
-  const [deauthFeature, setDeauthFeature] = useState<{ name: string; key: string } | null>(null);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        checkAllPermissions();
+      }
+    });
 
-  // === REQUEST PERMISSION STATES ===
-  const [reqPermModalVisible, setReqPermModalVisible] = useState(false);
-  const [reqPermFeature, setReqPermFeature] = useState<{ key: string; name: string } | null>(null);
-  const [openedFromManager, setOpenedFromManager] = useState(false);
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const getFeatureReqDescription = (key: string) => {
     switch (key) {
@@ -141,54 +145,20 @@ export default function SettingsScreen() {
   };
 
   const handlePressPermission = (key: string, name: string, currentStatus: string) => {
-    setOpenedFromManager(true);
-    setShowPermissionsModal(false);
-    setTimeout(() => {
-      if (currentStatus === 'granted') {
-        setDeauthFeature({ key, name });
-        setDeauthModalVisible(true);
-      } else {
-        setReqPermFeature({ key, name });
-        setReqPermModalVisible(true);
-      }
-    }, 400);
-  };
-
-  const handleConfirmRequestPermission = () => {
-    if (!reqPermFeature) return;
-    const { key } = reqPermFeature;
-    setReqPermModalVisible(false);
-
-    if (key === 'camera') requestCamera();
-    if (key === 'gallery') requestGallery();
-    if (key === 'location') requestLocation();
-    if (key === 'notifications') requestNotifications();
-
-    setReqPermFeature(null);
-
-    if (openedFromManager) {
-      setTimeout(() => {
-        setShowPermissionsModal(true);
-      }, 600);
-    }
-  };
-
-  const handleConfirmDeauth = () => {
-    if (!deauthFeature) return;
-    if (deauthFeature.key === 'camera') setCameraPermission('denied');
-    if (deauthFeature.key === 'gallery') setGalleryPermission('denied');
-    if (deauthFeature.key === 'location') setLocationPermission('denied');
-    if (deauthFeature.key === 'notifications') {
-      setNotificationsPermission('denied');
-      setNotificationsEnabled(false);
-    }
-    setDeauthModalVisible(false);
-    setDeauthFeature(null);
-
-    if (openedFromManager) {
-      setTimeout(() => {
-        setShowPermissionsModal(true);
-      }, 600);
+    if (currentStatus === 'granted') {
+      Alert.alert(
+        `Desativar ${name}`,
+        `Para desativar o acesso de ${name}, você precisa alterar nas configurações do sistema do seu celular.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    } else {
+      if (key === 'camera') requestCamera();
+      if (key === 'gallery') requestGallery();
+      if (key === 'location') requestLocation();
+      if (key === 'notifications') requestNotifications();
     }
   };
 
@@ -420,17 +390,17 @@ export default function SettingsScreen() {
     }).start();
 
     if (notificationsEnabled) {
-      setNotificationsEnabled(false);
-      setNotificationsPermission('denied');
-      if (user) {
-        await supabase.from('users').update({ push_token: null }).eq('id', user.id);
-      }
-      Alert.alert('Notificações', 'Você desativou as notificações.');
+      Alert.alert(
+        'Notificações Push',
+        'Para desativar as notificações, você precisa alterar nas configurações do sistema do seu celular.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
     } else {
       if (notificationsPermission !== 'granted') {
-        setOpenedFromManager(false);
-        setReqPermFeature({ key: 'notifications', name: 'Notificações Push' });
-        setReqPermModalVisible(true);
+        requestNotifications();
         return;
       }
       const token = await registerForPushNotificationsAsync();
@@ -1171,74 +1141,6 @@ export default function SettingsScreen() {
             >
               <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>Fechar Gerenciador</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL DE CONFIRMAÇÃO DE DESAUTORIZAÇÃO */}
-      <Modal visible={deauthModalVisible} transparent={true} animationType="fade" onRequestClose={() => setDeauthModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF', borderColor: isDarkMode ? '#3E3E4A' : 'transparent', borderWidth: isDarkMode ? 1 : 0 }]}>
-            <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434', fontSize: 18 }]}>Confirmar Ação</Text>
-            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676', marginTop: 10, marginBottom: 20 }]}>
-              Deseja remover a permissão de {deauthFeature?.name}?
-            </Text>
-            <View style={styles.whiteModalButtons}>
-              <TouchableOpacity
-                style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
-                onPress={() => {
-                  setDeauthModalVisible(false);
-                  if (openedFromManager) {
-                    setTimeout(() => {
-                      setShowPermissionsModal(true);
-                    }, 400);
-                  }
-                }}
-              >
-                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Não</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]}
-                onPress={handleConfirmDeauth}
-              >
-                <Text style={styles.whiteModalBtnTextConfirm}>Sim</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL DE EXPLICAÇÃO DE PERMISSÃO */}
-      <Modal visible={reqPermModalVisible} transparent={true} animationType="fade" onRequestClose={() => setReqPermModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.whiteModalContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF', borderColor: isDarkMode ? '#3E3E4A' : 'transparent', borderWidth: isDarkMode ? 1 : 0 }]}>
-            <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434', fontSize: 18 }]}>
-              Acesso à/ao {reqPermFeature?.name}
-            </Text>
-            <Text style={[styles.whiteModalDesc, { color: isDarkMode ? '#A8A8B3' : '#767676', marginTop: 10, marginBottom: 20 }]}>
-              {reqPermFeature ? getFeatureReqDescription(reqPermFeature.key) : ''}
-            </Text>
-            <View style={styles.whiteModalButtons}>
-              <TouchableOpacity
-                style={[styles.whiteModalBtnCancel, { backgroundColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }]}
-                onPress={() => {
-                  setReqPermModalVisible(false);
-                  if (openedFromManager) {
-                    setTimeout(() => {
-                      setShowPermissionsModal(true);
-                    }, 400);
-                  }
-                }}
-              >
-                <Text style={[styles.whiteModalBtnTextCancel, { color: isDarkMode ? '#FFFFFF' : '#767676' }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.whiteModalBtnConfirm, { backgroundColor: colors.accent }]}
-                onPress={handleConfirmRequestPermission}
-              >
-                <Text style={styles.whiteModalBtnTextConfirm}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>

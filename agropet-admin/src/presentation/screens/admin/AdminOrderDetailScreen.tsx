@@ -14,6 +14,18 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import AdminHeader from '../../components/AdminHeader';
 import { useTheme } from '../../contexts/ThemeContext';
 
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
+
 export default function AdminOrderDetailScreen({ route, navigation }: any) {
   const { order } = route.params;
   const { colors, isDarkMode } = useTheme();
@@ -47,17 +59,23 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
   const formattedDate = `${orderDateObj.getDate().toString().padStart(2, '0')}/${(orderDateObj.getMonth() + 1).toString().padStart(2, '0')}/${orderDateObj.getFullYear()}`;
 
   // Situação
+  const isPhysicalPDV = order.delivery_address === 'Venda Física PDV';
   const isDelivered = order.status === 'completed';
   const isCancelled = order.status === 'cancelled';
-  
-  let lineColor = '#FF8A80'; 
-  let textColor = '#D32F2F'; 
+
+  let lineColor = '#FF8A80';
+  let textColor = '#D32F2F';
   let statusText = 'Pendente';
   let isRightAligned = false;
 
-  if (isDelivered) {
-    lineColor = '#42A5F5'; 
-    textColor = '#1976D2'; 
+  if (isPhysicalPDV) {
+    lineColor = '#00E676';
+    textColor = '#00E676';
+    statusText = isCancelled ? 'Venda Física (Cancelada)' : 'Venda Física (Concluída)';
+    isRightAligned = !isCancelled;
+  } else if (isDelivered) {
+    lineColor = '#42A5F5';
+    textColor = '#1976D2';
     statusText = 'Entregue';
     isRightAligned = true;
   } else if (isCancelled) {
@@ -68,7 +86,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
   }
 
   // Endereço formatado
-  const clientAddress = [
+  const clientAddress = isPhysicalPDV ? 'Venda Física (PDV)' : [
     userData.rua,
     userData.numero ? `Nº ${userData.numero}` : null,
     userData.bairro,
@@ -93,7 +111,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
       </View>
 
       {/* ========== LISTA DE PRODUTOS E STATUS ========== */}
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -123,7 +141,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
                 <View style={[styles.photoContainer, { backgroundColor: isDarkMode ? '#18181C' : '#FFFFFF' }]}>
                   {product.image_url ? (
                     <Image
-                      source={{ uri: product.image_url }}
+                      source={{ uri: getFirstImageUrl(product.image_url) || '' }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />
@@ -177,20 +195,20 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           <View style={styles.trackContainer}>
             {/* Glow Line */}
             <Animated.View style={[
-              styles.glowLine, 
-              { 
-                backgroundColor: lineColor, 
+              styles.glowLine,
+              {
+                backgroundColor: lineColor,
                 shadowColor: lineColor,
-                opacity: glowAnim 
+                opacity: glowAnim
               }
             ]} />
-            
+
             {/* Base Line */}
             <View style={[styles.baseLine, { backgroundColor: lineColor }]} />
 
             {/* Circle */}
             <View style={[
-              styles.circleOuter, 
+              styles.circleOuter,
               isRightAligned ? { right: -5 } : { left: -5 },
               { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }
             ]}>
@@ -209,12 +227,12 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
         {/* ========== DADOS DO CLIENTE ========== */}
         <View style={[styles.clientCard, { backgroundColor: colors.cardBackground }]}>
           <Text style={[styles.clientCardTitle, { color: colors.textDark, fontWeight: 'bold' }]}>Dados do Cliente</Text>
-          
+
           <View style={styles.clientRow}>
             <Feather name="user" size={16} color={colors.textGray} />
             <Text style={[styles.clientLabel, { color: colors.textGray }]}>Nome:</Text>
             <Text style={[styles.clientValue, { color: colors.textDark, fontWeight: 'bold' }]} numberOfLines={1}>
-              {userData.name || 'Não informado'}
+              {isPhysicalPDV ? 'Venda Presencial (Balcão)' : (userData.name || 'Não informado')}
             </Text>
           </View>
 
@@ -222,7 +240,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
             <Feather name="phone" size={16} color={colors.textGray} />
             <Text style={[styles.clientLabel, { color: colors.textGray }]}>Telefone:</Text>
             <Text style={[styles.clientValue, { color: colors.textDark, fontWeight: 'bold' }]} numberOfLines={1}>
-              {userData.phone || 'Não informado'}
+              {isPhysicalPDV ? 'Não aplicável' : (userData.phone || 'Não informado')}
             </Text>
           </View>
 
@@ -249,8 +267,8 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="caret-back" size={16} color={colors.textDark} style={{ marginRight: 4 }} />
-          <Text style={[styles.voltarText, { color: colors.textDark, fontWeight: 'bold' }]}>Voltar</Text>
+          <Ionicons name="caret-back" size={16} color={isDarkMode ? '#FFE082' : colors.textDark} style={{ marginRight: 4 }} />
+          <Text style={[styles.voltarText, { color: isDarkMode ? '#FFE082' : colors.textDark, fontWeight: 'bold' }]}>Voltar</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -320,20 +338,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   glowLine: {
-    height: 12, 
+    height: 12,
     borderRadius: 6,
     width: '100%',
     position: 'absolute',
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
-    elevation: 4, 
+    elevation: 4,
   },
   circleOuter: {
-    width: 24, 
-    height: 24, 
-    borderRadius: 12, 
-    backgroundColor: '#FFFFFF', 
-    alignItems: 'center', 
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
     justifyContent: 'center',
     position: 'absolute',
     zIndex: 10,
@@ -344,14 +362,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   circleInner: {
-    width: 16, 
-    height: 16, 
-    borderRadius: 8, 
-    borderWidth: 3, 
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
     backgroundColor: '#FFFFFF'
   },
   statusTextRow: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     marginTop: 18,
     marginHorizontal: 10,
   },

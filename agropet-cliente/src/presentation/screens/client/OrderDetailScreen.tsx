@@ -13,6 +13,18 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { Feather } from '@expo/vector-icons';
 
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
+
 export default function OrderDetailScreen({ route, navigation }: any) {
   const { isDarkMode, colors } = useTheme();
   const { order } = route.params;
@@ -125,7 +137,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
                 <View style={[styles.photoContainer, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                   {product.image_url ? (
                     <Image
-                      source={{ uri: product.image_url }}
+                      source={{ uri: getFirstImageUrl(product.image_url) || '' }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />

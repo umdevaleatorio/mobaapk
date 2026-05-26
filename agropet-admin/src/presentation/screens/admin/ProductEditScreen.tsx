@@ -32,7 +32,17 @@ import EditIconDesc from '../../assets/tela9/formulario/descricao/Edit.svg';
 import EditIconPreco from '../../assets/tela9/formulario/preco/Edit.svg';
 import EditIconQtd from '../../assets/tela9/formulario/quantidade/Edit.svg';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+function getAllImageUrls(url: string | null | undefined): string[] {
+  if (!url) return [];
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(u => !!u);
+    } catch (_) {}
+  }
+  return [url];
+}
 
 export default function ProductEditScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -45,8 +55,11 @@ export default function ProductEditScreen() {
   const [showImagePickerOptions, setShowImagePickerOptions] = useState(false);
 
   // Form states
-  const [photoUri, setPhotoUri] = useState<string | null>(product?.image_url || null);
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<Array<{ uri: string; base64?: string | null }>>(() => {
+    const loadedUrls = getAllImageUrls(product?.image_url);
+    return loadedUrls.map(u => ({ uri: u, base64: null }));
+  });
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
   const [name, setName] = useState(product?.name || '');
   const [description, setDescription] = useState(product?.description || '');
@@ -63,8 +76,11 @@ export default function ProductEditScreen() {
     const unsubscribe = navigation.addListener('focus', () => {
       setSearchText('');
       setActiveCategory(product?.category_id || null);
-      setPhotoUri(product?.image_url || null);
-      setPhotoBase64(null);
+      
+      const loadedUrls = getAllImageUrls(product?.image_url);
+      setPhotos(loadedUrls.map(u => ({ uri: u, base64: null })));
+      setCurrentPhotoIndex(0);
+
       setName(product?.name || '');
       setDescription(product?.description || '');
       setPrice(product?.price?.toString() || '');
@@ -104,8 +120,12 @@ export default function ProductEditScreen() {
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setPhotoUri(result.assets[0].uri);
-      setPhotoBase64(result.assets[0].base64 || null);
+      const asset = result.assets[0];
+      setPhotos(prev => {
+        const next = [...prev, { uri: asset.uri, base64: asset.base64 || null }];
+        setCurrentPhotoIndex(next.length - 1);
+        return next;
+      });
     }
   };
 
@@ -126,8 +146,12 @@ export default function ProductEditScreen() {
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setPhotoUri(result.assets[0].uri);
-      setPhotoBase64(result.assets[0].base64 || null);
+      const asset = result.assets[0];
+      setPhotos(prev => {
+        const next = [...prev, { uri: asset.uri, base64: asset.base64 || null }];
+        setCurrentPhotoIndex(next.length - 1);
+        return next;
+      });
     }
   };
 
@@ -142,17 +166,16 @@ export default function ProductEditScreen() {
       return;
     }
 
+    const mappedImages = photos.map(p => p.base64 ? `data:image/jpeg;base64,${p.base64}` : p.uri);
+
     const updateData: any = {
       name,
       description,
       price: parseFloat(price.replace(',', '.')),
       stock: parseInt(quantity, 10),
       category_id: activeCategory,
+      image_url: mappedImages.length > 0 ? JSON.stringify(mappedImages) : null,
     };
-
-    if (photoBase64) {
-      updateData.image_url = `data:image/jpeg;base64,${photoBase64}`;
-    }
 
     const { error } = await supabase
       .from('products')
@@ -255,20 +278,123 @@ export default function ProductEditScreen() {
         <View style={[styles.formCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
           {/* Photo Section */}
           <View style={styles.photoSection}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.productPhoto} />
+            {photos.length === 0 ? (
+              <View style={{ alignItems: 'center' }}>
+                <NoPhotoSvg width={310} height={220} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+                <TouchableOpacity style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
+                  {isDarkMode ? (
+                    <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', minWidth: 140 }}>
+                      Trocar foto
+                    </Text>
+                  ) : (
+                    <TrocarFotoSvg width={140} height={24} />
+                  )}
+                </TouchableOpacity>
+              </View>
             ) : (
-              <NoPhotoSvg width={310} height={220} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
+              <View style={{ alignItems: 'center', width: '100%' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: 220 }}>
+                  {/* Left adjacent preview */}
+                  <View style={{ width: 45, height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                    {currentPhotoIndex > 0 ? (
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex - 1)}>
+                        <Image 
+                          source={{ uri: photos[currentPhotoIndex - 1].uri }} 
+                          style={{ width: 35, height: 140, borderRadius: 8, opacity: 0.3, resizeMode: 'cover' }} 
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+
+                  {/* Main Active Photo */}
+                  <View style={{ width: 220, height: 220, borderRadius: 15, overflow: 'hidden', marginHorizontal: 8, backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }}>
+                    <Image source={{ uri: photos[currentPhotoIndex].uri }} style={[styles.productPhoto, { width: '100%', height: '100%' }]} />
+                  </View>
+
+                  {/* Right adjacent preview */}
+                  <View style={{ width: 45, height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                    {currentPhotoIndex < photos.length - 1 ? (
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex + 1)}>
+                        <Image 
+                          source={{ uri: photos[currentPhotoIndex + 1].uri }} 
+                          style={{ width: 35, height: 140, borderRadius: 8, opacity: 0.3, resizeMode: 'cover' }} 
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* Wide and low-height chevron control pill */}
+                {photos.length > 1 && (
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    backgroundColor: 'rgba(0,0,0,0.6)', 
+                    borderRadius: 15, 
+                    width: 120, 
+                    height: 30, 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    paddingHorizontal: 12,
+                    marginTop: 15 
+                  }}>
+                    <TouchableOpacity 
+                      onPress={() => setCurrentPhotoIndex(prev => Math.max(0, prev - 1))}
+                      disabled={currentPhotoIndex === 0}
+                      style={{ opacity: currentPhotoIndex === 0 ? 0.3 : 1 }}
+                    >
+                      <Feather name="chevron-left" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+
+                    <View style={{ width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+
+                    <TouchableOpacity 
+                      onPress={() => setCurrentPhotoIndex(prev => Math.min(photos.length - 1, prev + 1))}
+                      disabled={currentPhotoIndex === photos.length - 1}
+                      style={{ opacity: currentPhotoIndex === photos.length - 1 ? 0.3 : 1 }}
+                    >
+                      <Feather name="chevron-right" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Sub-photo action buttons row */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 15, width: '90%', justifyContent: 'center' }}>
+                  {photos.length < 5 && (
+                    <TouchableOpacity 
+                      style={{ 
+                        flex: 1, 
+                        backgroundColor: '#339914', 
+                        paddingVertical: 8, 
+                        borderRadius: 8, 
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onPress={handleSelectPhoto}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>Adicionar foto</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity 
+                    style={{ 
+                      flex: 1, 
+                      backgroundColor: '#FF3B30', 
+                      paddingVertical: 8, 
+                      borderRadius: 8, 
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={() => {
+                      const newPhotos = [...photos];
+                      newPhotos.splice(currentPhotoIndex, 1);
+                      setPhotos(newPhotos);
+                      setCurrentPhotoIndex(prev => Math.max(0, prev - 1));
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>Remover atual</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             )}
-            <TouchableOpacity style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
-              {isDarkMode ? (
-                <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', minWidth: 140 }}>
-                  Trocar foto
-                </Text>
-              ) : (
-                <TrocarFotoSvg width={140} height={24} />
-              )}
-            </TouchableOpacity>
           </View>
 
           {/* Form Fields */}

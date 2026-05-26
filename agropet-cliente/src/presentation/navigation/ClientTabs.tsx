@@ -95,6 +95,7 @@ export default function ClientTabs() {
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
+      backBehavior="history"
       tabBar={(props) => <CustomTabBar {...props} />}
     >
       <Tab.Screen name="Menu" component={HomeScreen} />

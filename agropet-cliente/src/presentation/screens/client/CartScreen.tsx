@@ -10,8 +10,9 @@ import {
   ScrollView,
   Image,
   Alert,
+  BackHandler,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CartContext } from '../../contexts/CartContext';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -30,10 +31,17 @@ import { getShopStatus } from '../../../utils/shopHours';
 // import MeuCarrinho from '../../assets/tela8/cart/MeuCarrinho.svg';
 // import RemoverBtn from '../../assets/tela8/cart/RemoverBtn.svg';
 
-// === BUTTON SVGs substituídos ===
-// import ContinuarText from '../../assets/tela8/buttons/ContinuarText.svg';
-// import ProsseguirText from '../../assets/tela8/buttons/ProsseguirText.svg';
-// import PedidosText from '../../assets/tela8/buttons/PedidosText.svg';
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
 
 export default function CartScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -48,6 +56,31 @@ export default function CartScreen() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [decreases, setDecreases] = useState<Record<string, number>>({});
   const [removedAlert, setRemovedAlert] = useState<string | null>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (isEditMode) {
+          setIsEditMode(false);
+          setSelectedItems(new Set());
+          setDecreases({});
+          return true;
+        }
+        return false;
+      };
+
+      if (BackHandler && BackHandler.addEventListener) {
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => {
+          if (subscription && subscription.remove) {
+            subscription.remove();
+          } else if ((BackHandler as any).removeEventListener) {
+            (BackHandler as any).removeEventListener('hardwareBackPress', onBackPress);
+          }
+        };
+      }
+    }, [isEditMode])
+  );
 
   React.useEffect(() => {
     if (cart.length === 0) return;
@@ -407,7 +440,7 @@ export default function CartScreen() {
               <View style={[styles.productPhoto, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                 {item.image_url ? (
                   <Image
-                    source={{ uri: item.image_url }}
+                    source={{ uri: getFirstImageUrl(item.image_url) || '' }}
                     style={styles.productImage}
                     resizeMode="cover"
                   />

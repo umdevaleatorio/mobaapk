@@ -18,6 +18,7 @@ import { CatalogHeader, CatalogFilter } from '../../components/CatalogHeader';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useFilter, CATEGORY_KEYWORDS } from '../../contexts/FilterContext';
+import { AuthContext } from '../../contexts/AuthContext';
 
 // SVGs do carrinho restaurados
 import CartBig from '../../assets/tela5/carrinho/CartBig.svg';
@@ -38,6 +39,30 @@ import OpcoesLabel from '../../assets/tela5/barra/OpcoesLabel.svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+function getFirstImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch (_) {}
+  }
+  return url;
+}
+
+function getAllImageUrls(url: string | null | undefined): string[] {
+  if (!url) return [];
+  const trimmed = url.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(u => !!u);
+    } catch (_) {}
+  }
+  return [url];
+}
+
 export default function ProductDetailScreen() {
   const { colors, isDarkMode } = useTheme();
   const { toggleMenu } = useUserMenu();
@@ -45,12 +70,23 @@ export default function ProductDetailScreen() {
   const route = useRoute<any>();
   const { addToCart } = useContext(CartContext);
   const { searchText, setSearchText } = useFilter();
+  const { user } = useContext(AuthContext);
+  const [clientName, setClientName] = useState('');
+  const [dismissAlert, setDismissAlert] = useState(false);
 
   const product = route.params?.product;
   const [stock, setStock] = useState(product?.stock ?? 0);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(true);
+
+  const [photos, setPhotos] = useState<string[]>(() => getAllImageUrls(product?.image_url));
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+
+  useEffect(() => {
+    setPhotos(getAllImageUrls(product?.image_url));
+    setCurrentPhotoIndex(0);
+  }, [product]);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -73,7 +109,7 @@ export default function ProductDetailScreen() {
 
     fetchStock();
 
-    // Inscrição em tempo real para mudanças no estoque do produto
+    // 1. Inscrição em tempo real para mudanças no estoque do produto (Supabase Realtime)
     const channel = supabase
       .channel(`product_stock_${product.id}`)
       .on(
@@ -92,10 +128,37 @@ export default function ProductDetailScreen() {
       )
       .subscribe();
 
+    // 2. Polling de backup (consulta a cada 5 segundos) para garantir atualização caso a replicação real-time esteja desabilitada no banco
+    const intervalId = setInterval(() => {
+      fetchStock();
+    }, 5000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
   }, [product?.id]);
+
+  useEffect(() => {
+    const fetchProfileName = async () => {
+      if (user?.id) {
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', user.id)
+            .single();
+          if (data?.name) {
+            const firstName = data.name.trim().split(' ')[0];
+            setClientName(firstName);
+          }
+        } catch (e) {
+          console.log('Erro ao buscar nome do cliente para a saudação:', e);
+        }
+      }
+    };
+    fetchProfileName();
+  }, [user?.id]);
 
   const fetchRelatedProducts = async () => {
     try {
@@ -184,16 +247,79 @@ export default function ProductDetailScreen() {
           {/* Parte de cima: Foto à esquerda (159x215) + Info à direita */}
           <View style={styles.topRow}>
             {/* Foto do produto */}
-            <View style={[styles.photoWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
-              {product.image_url ? (
-                <Image
-                  source={{ uri: product.image_url }}
-                  style={styles.photo}
-                  resizeMode="contain"
-                />
-              ) : (
+            <View style={[styles.photoWrapper, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', justifyContent: 'center', alignItems: 'center' }]}>
+              {photos.length === 0 ? (
                 <View style={[styles.photo, { backgroundColor: isDarkMode ? '#3A3A44' : '#d9d9d9', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ color: isDarkMode ? '#888' : '#999' }}>Sem Foto</Text>
+                  <Text style={{ color: isDarkMode ? '#888' : '#999', fontSize: 12 }}>Sem Foto</Text>
+                </View>
+              ) : (
+                <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: '80%' }}>
+                    {/* Left preview */}
+                    <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
+                      {currentPhotoIndex > 0 ? (
+                        <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex - 1)}>
+                          <Image 
+                            source={{ uri: photos[currentPhotoIndex - 1] }} 
+                            style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3, resizeMode: 'cover' }} 
+                          />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+
+                    {/* Main Active image */}
+                    <View style={{ flex: 1, height: '100%', marginHorizontal: 4, borderRadius: 8, overflow: 'hidden' }}>
+                      <Image
+                        source={{ uri: photos[currentPhotoIndex] }}
+                        style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                      />
+                    </View>
+
+                    {/* Right preview */}
+                    <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
+                      {currentPhotoIndex < photos.length - 1 ? (
+                        <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex + 1)}>
+                          <Image 
+                            source={{ uri: photos[currentPhotoIndex + 1] }} 
+                            style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3, resizeMode: 'cover' }} 
+                          />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {/* Wide, low arrow pill */}
+                  {photos.length > 1 && (
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      backgroundColor: 'rgba(0,0,0,0.6)', 
+                      borderRadius: 10, 
+                      width: 80, 
+                      height: 22, 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      paddingHorizontal: 8,
+                      marginTop: 4 
+                    }}>
+                      <TouchableOpacity 
+                        onPress={() => setCurrentPhotoIndex(prev => Math.max(0, prev - 1))}
+                        disabled={currentPhotoIndex === 0}
+                        style={{ opacity: currentPhotoIndex === 0 ? 0.3 : 1 }}
+                      >
+                        <Feather name="chevron-left" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+
+                      <View style={{ width: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+
+                      <TouchableOpacity 
+                        onPress={() => setCurrentPhotoIndex(prev => Math.min(photos.length - 1, prev + 1))}
+                        disabled={currentPhotoIndex === photos.length - 1}
+                        style={{ opacity: currentPhotoIndex === photos.length - 1 ? 0.3 : 1 }}
+                      >
+                        <Feather name="chevron-right" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -218,15 +344,55 @@ export default function ProductDetailScreen() {
               <Text style={{
                 fontSize: 14,
                 fontWeight: 'bold',
-                color: isDarkMode ? '#919191' : '#042A7D',
+                color: stock < 10 ? '#A72424' : (isDarkMode ? '#919191' : '#042A7D'),
                 marginTop: 8,
                 textAlign: 'left',
                 paddingLeft: 4
               }}>
-                Estoque: {stock} unidades
+                {stock < 10 ? `Estoque: ${stock} unidades!!!` : `Estoque: ${stock} unidades`}
               </Text>
             </View>
           </View>
+
+          {/* Warning alert if stock < 10 */}
+          {stock < 10 && !dismissAlert && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderWidth: 1,
+              borderRadius: 10,
+              backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0',
+              borderColor: '#FF3B30',
+              marginTop: 10,
+              marginBottom: 10,
+              position: 'relative',
+            }}>
+              <Feather name="alert-circle" size={16} color="#FF3B30" style={{ marginRight: 8 }} />
+              <Text style={{
+                fontSize: 13,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#FF8A8A' : '#D32F2F',
+                flexShrink: 1,
+                lineHeight: 18,
+                paddingRight: 20,
+              }}>
+                Atenção: Últimas unidades. Aproveite este produto, caro {clientName ? clientName : 'Cliente'}.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setDismissAlert(true)}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: 12,
+                  padding: 2,
+                }}
+              >
+                <Feather name="x" size={16} color={isDarkMode ? '#FF8A8A' : '#D32F2F'} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Preço */}
           <Text style={[styles.precoText, { color: colors.textDark }]}>
@@ -306,7 +472,7 @@ export default function ProductDetailScreen() {
                 {/* Foto */}
                 <View style={[styles.relatedPhotoBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                   {relProduct.image_url ? (
-                    <Image source={{ uri: relProduct.image_url }} style={styles.relatedPhoto} resizeMode="contain" />
+                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} resizeMode="contain" />
                   ) : (
                     <View style={styles.relatedPhotoPlaceholder}>
                       <Text style={{ fontSize: 40 }}>📦</Text>

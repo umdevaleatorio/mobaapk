@@ -208,7 +208,7 @@ export default function AdminHomeScreen() {
               {greeting}
             </Text>
             {shopStatus && (
-              <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#25BE36' : '#FF3B30' }]}>
+              <Text style={[styles.countdownText, { color: shopStatus.isOpen ? '#4A90D9' : '#FF3B30' }]}>
                 {shopStatus.countdownText}
               </Text>
             )}

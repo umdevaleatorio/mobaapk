@@ -29,7 +29,7 @@ import AdmIcon from '../assets/tela2/header/Adm.svg';
 import MiniLogo from '../assets/tela2/header/Mini Logo.svg';
 
 interface AdminHeaderProps {
-  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas';
+  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas' | 'consultar_vendas';
   searchValue?: string;
   onSearchChange?: (text: string) => void;
 }
@@ -144,6 +144,7 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
         {title === 'perfil_adm' && <Text style={styles.textTitle}>Perfil adm</Text>}
         {title === 'detalhes_pedido' && <Text style={styles.textTitle}>Detalhes do pedido</Text>}
         {title === 'painel_vendas' && <Text style={styles.textTitle}>Painel de vendas</Text>}
+        {title === 'consultar_vendas' && <Text style={styles.textTitle}>Consultar vendas</Text>}
       </View>
 
       {/* Right side: Adm text or Search Bar + Person Icon */}
@@ -151,14 +152,14 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
         {(title === 'gerenciar' || title === 'registrar_produto' || title === 'editar_produto') ? (
           <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#2E2E38' : '#F2F2F2' }]}>
             <TouchableOpacity onPress={triggerSearch} activeOpacity={0.7}>
-              <Feather 
-                name="search" 
-                size={16} 
-                color={isDarkMode ? '#FFFFFF' : '#1C2434'} 
+              <Feather
+                name="search"
+                size={16}
+                color={isDarkMode ? '#FFFFFF' : '#1C2434'}
                 style={{ marginRight: 4 }}
               />
             </TouchableOpacity>
-            <TextInput 
+            <TextInput
               style={[styles.searchInput, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}
               value={localSearch}
               onChangeText={setLocalSearch}
@@ -171,8 +172,8 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
         ) : (
           <AdmIcon width={45} height={25} style={{ marginRight: 8 }} />
         )}
-        <TouchableOpacity 
-          onPress={handlePersonPress} 
+        <TouchableOpacity
+          onPress={handlePersonPress}
           activeOpacity={0.7}
         >
           <Animated.View
@@ -185,9 +186,9 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
             ]}
           >
             {photoUri ? (
-              <Image 
-                source={{ uri: photoUri }} 
-                style={{ width: 36, height: 36, borderRadius: 18 }} 
+              <Image
+                source={{ uri: photoUri }}
+                style={{ width: 36, height: 36, borderRadius: 18 }}
               />
             ) : (
               <PersonIcon width={46} height={46} />
