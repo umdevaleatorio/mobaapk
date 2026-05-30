@@ -2,9 +2,12 @@
   <defs>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');
+      
       .svg-container {
         font-family: 'Press Start 2P', 'Courier New', monospace;
       }
+      
+      /* --- Text Animations --- */
       .floating-title {
         font-size: 42px;
         fill: #F97D01;
@@ -14,6 +17,7 @@
         transform-origin: 152px 135px;
         text-anchor: start;
       }
+      
       .title-shadow1 {
         font-size: 42px;
         font-weight: bold;
@@ -23,6 +27,7 @@
         transform-origin: 155px 138px;
         text-anchor: start;
       }
+      
       .title-shadow2 {
         font-size: 42px;
         font-weight: bold;
@@ -32,26 +37,159 @@
         transform-origin: 158px 141px;
         text-anchor: start;
       }
-      .tail-wag {
-        animation: tailWag;
-        animation-duration: 0.3s;
-        animation-timing-function: ease-in-out;
-        animation-iteration-count: infinite;
-        animation-direction: alternate;
-        transform-origin: 15px 16px;
-      }
+      
       @keyframes floatAnim {
         0%, 100% { transform: translateY(0px) rotate(-1deg); }
         50% { transform: translateY(-10px) rotate(1deg); }
       }
+
+      /* --- Dog Animations --- */
+      .tail-wag {
+        animation: tailWag 0.3s ease-in-out infinite alternate;
+        transform-origin: 15px 16px;
+      }
+      
       @keyframes tailWag {
         0% { transform: rotate(-12deg); }
         100% { transform: rotate(18deg); }
       }
+
+      .eyes-blink {
+        animation: blink 4s infinite;
+        transform-origin: 11.5px 8.5px;
+      }
+      
+      @keyframes blink {
+        0%, 94%, 98%, 100% { transform: scaleY(1); }
+        96%, 99% { transform: scaleY(0.1); }
+      }
+
+      .ear-twitch-l {
+        animation: twitchLeft 5s infinite;
+        transform-origin: 7px 12px;
+      }
+      
+      @keyframes twitchLeft {
+        0%, 10%, 100% { transform: rotate(0deg); }
+        5% { transform: rotate(-12deg); }
+      }
+
+      .ear-twitch-r {
+        animation: twitchRight 5s infinite;
+        transform-origin: 17px 12px;
+      }
+      
+      @keyframes twitchRight {
+        0%, 15%, 100% { transform: rotate(0deg); }
+        10% { transform: rotate(12deg); }
+      }
+      
+      .collar-shine {
+        animation: collarPulse 1.5s ease-in-out infinite alternate;
+      }
+      
+      @keyframes collarPulse {
+        0% { fill: #FFD700; transform: scale(1); }
+        100% { fill: #FFF9C4; transform: scale(1.1); }
+      }
+
+      .tongue-pant {
+        animation: panting 0.15s infinite alternate ease-in-out;
+        transform-origin: 11px 12px;
+      }
+      
+      @keyframes panting {
+        0% { transform: scaleY(1); }
+        100% { transform: scaleY(0.6); }
+      }
+
+      /* --- Props Animations --- */
+      .bone-glint {
+        animation: glintAnim 3s infinite ease-in-out;
+        transform-origin: 0.5px 18.5px;
+      }
+      
+      @keyframes glintAnim {
+        0%, 80%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+        90% { opacity: 1; transform: scale(1.5) rotate(90deg); }
+      }
+
+      /* --- Sparkles Animations --- */
+      .sparkle {
+        fill: #FFD700;
+        animation: sparkleAnim 2.5s infinite ease-in-out;
+      }
+      
+      .s1 { animation-delay: 0s; transform-origin: 145px 35px; }
+      .s2 { animation-delay: 0.8s; transform-origin: 455px 55px; }
+      .s3 { animation-delay: 1.6s; transform-origin: 125px 165px; }
+      .s4 { animation-delay: 1.2s; transform-origin: 40px 40px; }
+      
+      @keyframes sparkleAnim {
+        0% { transform: scale(0) rotate(0deg); opacity: 0; }
+        50% { transform: scale(1.2) rotate(90deg); opacity: 1; }
+        100% { transform: scale(0) rotate(180deg); opacity: 0; }
+      }
     </style>
   </defs>
+
   <g class="svg-container">
+    
+    <!-- Sparkles Background -->
+    <g class="sparkle s1">
+       <rect x="144" y="30" width="2" height="10" rx="1" />
+       <rect x="140" y="34" width="10" height="2" rx="1" />
+    </g>
+    <g class="sparkle s2">
+       <rect x="454" y="50" width="2" height="10" rx="1" />
+       <rect x="450" y="54" width="10" height="2" rx="1" />
+    </g>
+    <g class="sparkle s3">
+       <rect x="124" y="160" width="2" height="10" rx="1" />
+       <rect x="120" y="164" width="10" height="2" rx="1" />
+    </g>
+    <g class="sparkle s4">
+       <rect x="39" y="35" width="2" height="10" rx="1" />
+       <rect x="35" y="39" width="10" height="2" rx="1" />
+    </g>
+
+    <!-- Pixel Art Group -->
     <g transform="translate(30, 10) scale(4.5)" style="image-rendering: pixelated;">
+      
+      <!-- Props: Bone Left -->
+      <g>
+        <rect x="0" y="18" width="2" height="2" fill="#F0F0F0" />
+        <rect x="0" y="20" width="2" height="2" fill="#E0E0E0" />
+        <rect x="1" y="19" width="4" height="2" fill="#F0F0F0" />
+        <rect x="4" y="18" width="2" height="2" fill="#F0F0F0" />
+        <rect x="4" y="20" width="2" height="2" fill="#E0E0E0" />
+        <rect x="1" y="20" width="4" height="1" fill="#D0D0D0" />
+        <!-- Top edge highlight (clean look) -->
+        <rect x="0" y="18" width="1" height="1" fill="#FFFFFF" />
+        <rect x="4" y="18" width="1" height="1" fill="#FFFFFF" />
+        <rect x="1" y="19" width="4" height="1" fill="#FFFFFF" />
+      </g>
+      <!-- "Clean Glint" Sparkle -->
+      <g class="bone-glint">
+        <rect x="0" y="17" width="1" height="1" fill="#FFFFFF" />
+        <rect x="-1" y="18" width="1" height="1" fill="#FFFFFF" />
+        <rect x="1" y="18" width="1" height="1" fill="#FFFFFF" />
+        <rect x="0" y="19" width="1" height="1" fill="#FFFFFF" />
+      </g>
+
+      <!-- Props: Dog Food Bowl Right -->
+      <g>
+        <!-- Bowl -->
+        <rect x="16" y="19" width="7" height="1" fill="#FF3B30" />
+        <rect x="16" y="20" width="7" height="1" fill="#D32F2F" />
+        <rect x="17" y="21" width="5" height="1" fill="#B71C1C" />
+        <!-- Highlight on bowl -->
+        <rect x="17" y="19" width="1" height="1" fill="#FF8A80" />
+        <!-- Food (Clean orange kibble) -->
+        <rect x="17" y="18" width="5" height="1" fill="#F57C00" />
+      </g>
+
+      <!-- Tail (Wagging) -->
       <g class="tail-wag">
         <rect x="15" y="16" width="2" height="1" fill="#E96310" />
         <rect x="16" y="15" width="2" height="1" fill="#E96310" />
@@ -59,32 +197,64 @@
         <rect x="18" y="13" width="2" height="2" fill="#E96310" />
         <rect x="19" y="12" width="1" height="1" fill="#FFF0F0" />
       </g>
-      <rect x="9" y="13" width="6" height="1" fill="#FF3B30" />
-      <rect x="11" y="14" width="2" height="1" fill="#FFD700" />
-      <rect x="6" y="7" width="2" height="5" fill="#6A3E26" />
-      <rect x="5" y="8" width="1" height="3" fill="#6A3E26" />
-      <rect x="16" y="7" width="2" height="5" fill="#6A3E26" />
-      <rect x="18" y="8" width="1" height="3" fill="#6A3E26" />
+      
+      <!-- Back Legs -->
+      <rect x="6" y="16" width="2" height="3" fill="#E96310" />
+      <rect x="7" y="19" width="2" height="1" fill="#FFF0F0" />
+
+      <!-- Left Ear (Twitching) -->
+      <g class="ear-twitch-l">
+        <rect x="6" y="7" width="2" height="5" fill="#6A3E26" />
+        <rect x="5" y="8" width="1" height="3" fill="#6A3E26" />
+      </g>
+      
+      <!-- Right Ear (Twitching) -->
+      <g class="ear-twitch-r">
+        <rect x="16" y="7" width="2" height="5" fill="#6A3E26" />
+        <rect x="18" y="8" width="1" height="3" fill="#6A3E26" />
+      </g>
+
+      <!-- Head Base -->
       <rect x="8" y="6" width="8" height="7" fill="#E96310" />
       <rect x="9" y="5" width="6" height="1" fill="#E96310" />
+      
+      <!-- Body -->
+      <rect x="8" y="14" width="8" height="5" fill="#E96310" />
+      <rect x="9" y="19" width="6" height="1" fill="#E96310" />
+      
+      <!-- Collar -->
+      <rect x="9" y="13" width="6" height="1" fill="#FF3B30" />
+      <rect x="11" y="14" width="2" height="1" class="collar-shine" transform-origin="12px 14.5px" />
+
+      <!-- Front Legs (Fixed) -->
+      <rect x="9" y="15" width="2" height="5" fill="#6A3E26" />
+      <rect x="8" y="20" width="3" height="1" fill="#FFF0F0" />
+      <rect x="13" y="15" width="2" height="5" fill="#6A3E26" />
+      <rect x="13" y="20" width="3" height="1" fill="#FFF0F0" />
+
+      <!-- Snout -->
       <rect x="10" y="10" width="4" height="3" fill="#FFF0F0" />
       <rect x="11" y="9" width="2" height="1" fill="#FFF0F0" />
       <rect x="11" y="10" width="2" height="1" fill="#1C2434" />
-      <rect x="9" y="8" width="1" height="1" fill="#1C2434" />
-      <rect x="14" y="8" width="1" height="1" fill="#1C2434" />
-      <rect x="8" y="14" width="8" height="5" fill="#E96310" />
-      <rect x="9" y="19" width="6" height="1" fill="#E96310" />
-      <rect x="9" y="15" width="2" height="5" fill="#6A3E26" />
-      <rect x="13" y="15" width="2" height="5" fill="#6A3E26" />
-      <rect x="8" y="20" width="3" height="1" fill="#FFF0F0" />
-      <rect x="13" y="20" width="3" height="1" fill="#FFF0F0" />
-      <rect x="6" y="16" width="2" height="3" fill="#E96310" />
-      <rect x="7" y="19" width="2" height="1" fill="#FFF0F0" />
-      <rect x="16" y="16" width="2" height="3" fill="#E96310" />
-      <rect x="15" y="19" width="2" height="1" fill="#FFF0F0" />
+      
+      <!-- Tongue (Panting, drawn over collar) -->
+      <g class="tongue-pant">
+        <rect x="11" y="12" width="2" height="2" fill="#FF5252" />
+        <rect x="11" y="14" width="2" height="1" fill="#FF8A80" />
+      </g>
+
+      <!-- Eyes (Blinking) -->
+      <g class="eyes-blink">
+        <rect x="9" y="8" width="1" height="1" fill="#1C2434" />
+        <rect x="14" y="8" width="1" height="1" fill="#1C2434" />
+      </g>
+      
     </g>
+
+    <!-- Texts -->
     <text x="11" y="141" class="title-shadow2">Updates</text>
     <text x="8" y="138" class="title-shadow1">Updates</text>
     <text x="5" y="135" class="floating-title">Updates</text>
+
   </g>
 </svg>
