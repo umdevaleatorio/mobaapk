@@ -146,9 +146,9 @@ export function CatalogHeader({ searchText: propSearchText, onSearchChange: prop
 
   return (
     <>
-      {/* ========== PARTE SUPERIOR (#1C2434) ========== */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground }]}>
-        {/* Mini Logo (36x36) que sempre leva para o Catálogo (Menu) */}
+        {/* ========== PARTE SUPERIOR (#1C2434) ========== */}
+        <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground, paddingTop: Platform.OS === 'android' ? 38 : 50 }]}>
+          {/* Mini Logo (36x36) que sempre leva para o Catálogo (Menu) */}
         <TouchableOpacity onPress={() => navigation.navigate('Menu')} activeOpacity={0.7}>
           <MiniLogo width={36} height={36} />
         </TouchableOpacity>
@@ -300,7 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#1C2434',
     paddingHorizontal: 10,
-    paddingTop: Platform.OS === 'android' ? 38 : 50,
     paddingBottom: 12,
     gap: 8,
   },

@@ -200,7 +200,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   ];
 
   return (
-    <View style={styles.tabBarOuter}>
+    <View style={[styles.tabBarOuter, { bottom: Platform.OS === 'ios' ? 34 : 24 }]}>
       <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
         <Animated.View style={slidingBgStyle} />
 
@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
   // Container da barra — posição fixa embaixo
   tabBarOuter: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 34 : 24,
     left: 16,
     right: 16,
   },

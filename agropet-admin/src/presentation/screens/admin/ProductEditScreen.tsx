@@ -403,6 +403,7 @@ export default function ProductEditScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 ref={nameRef}
+                testID="product-name-input"
                 style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, isEditingName && styles.inputFieldEditing]}
                 value={name}
                 onChangeText={setName}
@@ -455,6 +456,7 @@ export default function ProductEditScreen() {
                   )}
                   <TextInput
                     ref={priceRef}
+                    testID="product-price-input"
                     style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, price.length > 0 && { paddingLeft: 42 }, isEditingPrice && styles.inputFieldEditing]}
                     value={price}
                     onChangeText={setPrice}
@@ -465,6 +467,7 @@ export default function ProductEditScreen() {
                   />
                   <TouchableOpacity 
                     style={styles.editIconRight} 
+                    testID="edit-price-btn"
                     onPress={() => {
                       setIsEditingPrice(true);
                       setTimeout(() => priceRef.current?.focus(), 100);
@@ -483,6 +486,7 @@ export default function ProductEditScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     ref={qtyRef}
+                    testID="product-quantity-input"
                     style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', color: colors.textDark }, isEditingQty && styles.inputFieldEditing]}
                     value={quantity}
                     onChangeText={setQuantity}
@@ -503,7 +507,7 @@ export default function ProductEditScreen() {
                 </View>
               </View>
               <View style={styles.smallInputWrapper}>
-                <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+                <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} testID="save-product-btn">
                   <FundoConfirmarSvg width="100%" height={50} style={{ position: 'absolute', borderRadius: 10 }} />
                   <ConfirmarSvg width="70%" height={20} style={{ zIndex: 1 }} fill={isDarkMode ? '#FFFFFF' : undefined} />
                 </TouchableOpacity>

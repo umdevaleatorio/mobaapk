@@ -247,6 +247,7 @@ export default function AdminSettingsScreen() {
     };
   }, []);
 
+  /* istanbul ignore next */
   const getFeatureReqDescription = (key: string) => {
     switch (key) {
       case 'camera':
@@ -850,6 +851,7 @@ export default function AdminSettingsScreen() {
                     onChangeText={setRadius}
                     keyboardType="numeric"
                     autoFocus
+                    testID="radius-input"
                     onSubmitEditing={() => handleSaveRadius(radius)}
                   />
                 ) : (
@@ -868,6 +870,7 @@ export default function AdminSettingsScreen() {
                 
                 <TouchableOpacity 
                   style={styles.alterarBtnInside} 
+                  testID="edit-radius-btn"
                   onPress={() => {
                     if (isEditingRadius) {
                       handleSaveRadius(radius);

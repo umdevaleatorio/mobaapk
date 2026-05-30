@@ -176,6 +176,7 @@ export default function AdminOrdersScreen() {
         {/* Coluna 4: Rastrear e Ver Produtos */}
         <View style={[styles.colContainer, { gap: 6 }]}>
           <TouchableOpacity 
+            testID="track-order-btn"
             activeOpacity={0.7} 
             style={[isCancelled && { opacity: 0.3 }]}
             onPress={() => !isCancelled && handleTrackOrder(order)}

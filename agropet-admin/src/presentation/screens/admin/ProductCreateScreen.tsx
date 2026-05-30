@@ -240,7 +240,7 @@ export default function ProductCreateScreen() {
             {photos.length === 0 ? (
               <View style={{ alignItems: 'center' }}>
                 <NoPhotoSvg width={310} height={220} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
-                <TouchableOpacity style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
+                <TouchableOpacity testID="enviar-foto-btn" style={styles.enviarFotoBtn} onPress={handleSelectPhoto}>
                   {isDarkMode ? (
                     <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', minWidth: 140 }}>
                       Enviar foto
@@ -364,6 +364,7 @@ export default function ProductCreateScreen() {
                 <DigiteNomeSvg width={200} height={14} style={styles.placeholderSvg} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
               )}
               <TextInput
+                testID="product-name-input"
                 style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                 value={name}
                 onChangeText={setName}
@@ -376,6 +377,7 @@ export default function ProductCreateScreen() {
                 <DigiteDescricaoSvg width={230} height={14} style={[styles.placeholderSvg, { top: 15 }]} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
               )}
               <TextInput
+                testID="product-description-input"
                 style={[styles.inputField, styles.textArea, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                 value={description}
                 onChangeText={setDescription}
@@ -396,6 +398,7 @@ export default function ProductCreateScreen() {
                     <Text style={[styles.currencyPrefix, { color: isDarkMode ? '#919191' : colors.textDark }]}>R$</Text>
                   )}
                   <TextInput
+                    testID="product-price-input"
                     style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }, price.length > 0 && { paddingLeft: 42 }]}
                     value={price}
                     onChangeText={setPrice}
@@ -409,6 +412,7 @@ export default function ProductCreateScreen() {
                     <QuantidadeSvg width={100} height={14} style={styles.placeholderSvg} fill={isDarkMode ? '#919191' : undefined} stroke={isDarkMode ? '#919191' : undefined} />
                   )}
                   <TextInput
+                    testID="product-quantity-input"
                     style={[styles.inputField, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', color: isDarkMode ? '#919191' : colors.textDark }]}
                     value={quantity}
                     onChangeText={setQuantity}
@@ -422,7 +426,7 @@ export default function ProductCreateScreen() {
             <View style={styles.row}>
               <View style={styles.smallInputWrapper} />
               <View style={styles.smallInputWrapper}>
-                <TouchableOpacity style={styles.registerBtn} onPress={handleRegister}>
+                <TouchableOpacity testID="register-product-btn" style={styles.registerBtn} onPress={handleRegister}>
                   <View style={[StyleSheet.absoluteFill, { backgroundColor: '#339914', borderRadius: 10 }]} />
                   <RegistrarSvg width="100%" height={20} style={{ zIndex: 1 }} fill={isDarkMode ? '#FFFFFF' : undefined} />
                 </TouchableOpacity>

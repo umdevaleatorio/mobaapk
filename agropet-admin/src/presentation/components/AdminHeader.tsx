@@ -127,12 +127,12 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
   return (
     <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground }]}>
       {/* Mini Logo */}
-      <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity testID="header-logo-btn" activeOpacity={0.7} onPress={() => navigation.navigate('Home')}>
         <MiniLogo width={36} height={36} />
       </TouchableOpacity>
 
       {/* Title - Left aligned next to MiniLogo */}
-      <View style={[styles.titleWrapper, { marginLeft: 8 }]}>
+      <View testID="header-title-wrapper" style={[styles.titleWrapper, { marginLeft: 8 }]}>
         {title === 'home' && <MenuInicialTitle width={120} height={20} />}
         {title === 'mapa' && <Text style={styles.textTitle}>Localizar entrega</Text>}
         {title === 'opcoes' && <OpcoesTitle width={80} height={20} />}
@@ -151,7 +151,7 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
       <View style={styles.rightGroup}>
         {(title === 'gerenciar' || title === 'registrar_produto' || title === 'editar_produto') ? (
           <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#2E2E38' : '#F2F2F2' }]}>
-            <TouchableOpacity onPress={triggerSearch} activeOpacity={0.7}>
+            <TouchableOpacity testID="header-search-icon-btn" onPress={triggerSearch} activeOpacity={0.7}>
               <Feather
                 name="search"
                 size={16}
@@ -173,6 +173,7 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
           <AdmIcon width={45} height={25} style={{ marginRight: 8 }} />
         )}
         <TouchableOpacity
+          testID="header-person-btn"
           onPress={handlePersonPress}
           activeOpacity={0.7}
         >

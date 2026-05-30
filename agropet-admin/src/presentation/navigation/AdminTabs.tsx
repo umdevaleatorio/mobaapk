@@ -130,7 +130,7 @@ const tabConfigs: any = {
   },
 };
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
+export function CustomTabBar({ state, descriptors, navigation }: any) {
   // Ocultar barra inferior se o mapa estiver em modo de rastreamento (mapa expandido)
   const activeRoute = state.routes[state.index];
   const isMapTracking = activeRoute.name === 'Mapa' && activeRoute.params?.clientLocation;

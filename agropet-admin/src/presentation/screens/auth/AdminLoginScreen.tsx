@@ -115,6 +115,7 @@ export default function AdminLoginScreen() {
 
           {/* Botão Entrar (Branco, borderRadius 30) */}
           <TouchableOpacity
+            testID="admin-login-submit-btn"
             style={styles.entrarButton}
             onPress={handleLogin}
             activeOpacity={0.8}

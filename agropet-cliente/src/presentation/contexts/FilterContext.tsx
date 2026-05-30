@@ -8,7 +8,7 @@ interface FilterContextType {
   clearFilters: () => void;
 }
 
-const FilterContext = createContext<FilterContextType>({
+export const FilterContext = createContext<FilterContextType>({
   selectedCategories: [],
   toggleCategory: () => { },
   searchText: '',
