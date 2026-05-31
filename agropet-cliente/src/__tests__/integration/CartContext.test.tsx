@@ -30,6 +30,7 @@ function CartConsumer() {
       <Button title="Dec A" onPress={() => addToCart({ id: 'p-1' }, -2)} />
       <Button title="Remove A" onPress={() => removeFromCart('p-1')} />
       <Button title="Clear" onPress={() => clearCart()} />
+      <Button title="Add Invalid" onPress={() => addToCart({ name: 'No ID' } as any)} />
     </View>
   );
 }
@@ -399,5 +400,26 @@ describe('CartContext & CartProvider', () => {
     await defaultContextVal.addToCart();
     await defaultContextVal.removeFromCart();
     await defaultContextVal.clearCart();
+  });
+
+  it('should warn and do nothing if adding product without valid id', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { getByText } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Invalid'));
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith('Cannot add product without a valid id');
+    warnSpy.mockRestore();
   });
 });

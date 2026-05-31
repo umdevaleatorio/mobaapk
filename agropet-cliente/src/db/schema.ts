@@ -26,7 +26,7 @@ export interface DBOrder {
   client_id: string;
   total_amount: number;
   shipping_fee: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'confirmed' | 'completed' | 'cancelled';
   delivery_address: string;
   latitude?: number;
   longitude?: number;

@@ -12,6 +12,7 @@ module.exports = {
     '!src/**/*.d.ts',
     '!src/db/schema.ts',
     '!src/data/datasources/supabase/client.ts',
+    '!src/**/index.ts',
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

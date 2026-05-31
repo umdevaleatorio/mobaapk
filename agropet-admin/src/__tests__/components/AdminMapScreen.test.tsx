@@ -31,7 +31,7 @@ jest.mock('react-native-maps', () => {
 });
 
 // Import screen
-import AdminMapScreen from '../../presentation/screens/admin/AdminMapScreen';
+import AdminMapScreen from '../../presentation/screens/admin/AdminMap';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
@@ -573,15 +573,16 @@ describe('AdminMapScreen - Deep Coverage', () => {
       throw new Error('Database focus fail');
     });
 
-    // Invoke focus listener when database throws
+    // Invoke database throw by rendering the screen freshly
     currentRouteParams = {}; // clientLocation is null
+    const { unmount: failUnmount } = renderScreen(AdminMapScreen);
+
     await act(async () => {
-      if (listeners['focus']) {
-        await listeners['focus']();
-      }
+      await Promise.resolve();
     });
 
     expect(focusConsoleSpy).toHaveBeenCalledWith('Error loading store location on focus:', expect.any(Error));
+    failUnmount();
     focusConsoleSpy.mockRestore();
     (supabase.from as jest.Mock).mockImplementation(() => createMockChain());
 

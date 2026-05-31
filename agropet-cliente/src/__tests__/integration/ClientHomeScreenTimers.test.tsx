@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import HomeScreen from '../../presentation/screens/client/HomeScreen';
+import HomeScreen from '../../presentation/screens/client/Home';
 import { supabase } from '../../data/datasources/supabase/client';
 
 // ── Mocks ──

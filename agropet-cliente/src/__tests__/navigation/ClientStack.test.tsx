@@ -32,13 +32,13 @@ jest.mock('../../presentation/components/GlobalUserMenu', () => {
 
 // Mock all screens inside the stack to prevent parsing or import errors
 jest.mock('../../presentation/navigation/ClientTabs', () => () => null);
-jest.mock('../../presentation/screens/client/ProductDetailScreen', () => () => null);
-jest.mock('../../presentation/screens/client/PaymentScreen', () => () => null);
+jest.mock('../../presentation/screens/client/ProductDetail', () => () => null);
+jest.mock('../../presentation/screens/client/Payment', () => () => null);
 jest.mock('../../presentation/screens/client/PaymentConfirmScreen', () => () => null);
-jest.mock('../../presentation/screens/client/OrdersScreen', () => () => null);
-jest.mock('../../presentation/screens/client/OrderDetailScreen', () => () => null);
-jest.mock('../../presentation/screens/client/TrackingScreen', () => () => null);
-jest.mock('../../presentation/screens/client/ProfileScreen', () => () => null);
+jest.mock('../../presentation/screens/client/Orders', () => () => null);
+jest.mock('../../presentation/screens/client/OrderDetail', () => () => null);
+jest.mock('../../presentation/screens/client/Tracking', () => () => null);
+jest.mock('../../presentation/screens/client/Profile', () => () => null);
 
 describe('ClientStack', () => {
   it('should render ClientStack Navigator and GlobalUserMenu correctly', () => {

@@ -9,16 +9,16 @@ import { Alert } from 'react-native';
 
 // Import screens
 import AdminLoginScreen from '../../presentation/screens/auth/AdminLoginScreen';
-import AdminHomeScreen from '../../presentation/screens/admin/AdminHomeScreen';
-import AdminMapScreen from '../../presentation/screens/admin/AdminMapScreen';
-import AdminOrderDetailScreen from '../../presentation/screens/admin/AdminOrderDetailScreen';
-import AdminOrdersScreen from '../../presentation/screens/admin/AdminOrdersScreen';
-import AdminProfileScreen from '../../presentation/screens/admin/AdminProfileScreen';
-import AdminSettingsScreen from '../../presentation/screens/admin/AdminSettingsScreen';
+import AdminHomeScreen from '../../presentation/screens/admin/AdminHome';
+import AdminMapScreen from '../../presentation/screens/admin/AdminMap';
+import AdminOrderDetailScreen from '../../presentation/screens/admin/AdminOrderDetail';
+import AdminOrdersScreen from '../../presentation/screens/admin/AdminOrders';
+import AdminProfileScreen from '../../presentation/screens/admin/AdminProfile';
+import AdminSettingsScreen from '../../presentation/screens/admin/AdminSettings';
 import OrdersScreen from '../../presentation/screens/admin/OrdersScreen';
-import ProductCreateScreen from '../../presentation/screens/admin/ProductCreateScreen';
-import ProductEditScreen from '../../presentation/screens/admin/ProductEditScreen';
-import AdminConsultSalesScreen from '../../presentation/screens/admin/AdminConsultSalesScreen';
+import ProductCreateScreen from '../../presentation/screens/admin/ProductCreate';
+import ProductEditScreen from '../../presentation/screens/admin/ProductEdit';
+import AdminConsultSalesScreen from '../../presentation/screens/admin/AdminConsultSales';
 
 // ── Mock Navigation Hooks ──
 const mockNavigate = jest.fn();
@@ -173,7 +173,7 @@ describe('Unified Admin Screens Tests', () => {
       }
     };
     const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute });
-    expect(getByText('Nº do Pedido')).toBeTruthy();
+    expect(getByText('N° do Pedido')).toBeTruthy();
     expect(getByText('Pendente')).toBeTruthy();
   });
 

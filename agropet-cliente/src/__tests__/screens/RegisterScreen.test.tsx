@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { TextInput, TouchableOpacity, Alert } from 'react-native';
-import RegisterScreen from '../../presentation/screens/auth/RegisterScreen';
+import RegisterScreen from '../../presentation/screens/auth/Register';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../src/data/datasources/supabase/client';
 
@@ -211,7 +211,7 @@ describe('RegisterScreen', () => {
 
     jest.isolateModules(() => {
       jest.doMock('react', () => React);
-      const IsolatedRegisterScreen = require('../../presentation/screens/auth/RegisterScreen').default;
+      const IsolatedRegisterScreen = require('../../presentation/screens/auth/Register').default;
       const { toJSON } = render(<IsolatedRegisterScreen />);
       expect(toJSON()).toBeTruthy();
     });
@@ -226,7 +226,7 @@ describe('RegisterScreen', () => {
 
     jest.isolateModules(() => {
       jest.doMock('react', () => React);
-      const IsolatedRegisterScreen = require('../../presentation/screens/auth/RegisterScreen').default;
+      const IsolatedRegisterScreen = require('../../presentation/screens/auth/Register').default;
       const { toJSON } = render(<IsolatedRegisterScreen />);
       expect(toJSON()).toBeTruthy();
     });

@@ -34,7 +34,7 @@ jest.mock('../../utils/shopHours', () => ({
 
 // Import screens
 import AdminLoginScreen from '../../presentation/screens/auth/AdminLoginScreen';
-import AdminHomeScreen from '../../presentation/screens/admin/AdminHomeScreen';
+import AdminHomeScreen from '../../presentation/screens/admin/AdminHome';
 import OrdersScreen from '../../presentation/screens/admin/OrdersScreen';
 
 // ── Mock Navigation Hooks ──

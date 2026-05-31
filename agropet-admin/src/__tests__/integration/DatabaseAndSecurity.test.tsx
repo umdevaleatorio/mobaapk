@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import { supabase } from '../../data/datasources/supabase/client';
-import AdminSalesHistoryScreen from '../../presentation/screens/admin/AdminSalesHistoryScreen';
+import AdminSalesHistoryScreen from '../../presentation/screens/admin/AdminSalesHistory';
 
 // ── Mock do Supabase Fluent Query Builder ──
 const mockNeq = jest.fn().mockReturnThis();

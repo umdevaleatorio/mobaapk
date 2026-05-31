@@ -4,52 +4,68 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Admin Screens
-import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
-import AdminMapScreen from '../screens/admin/AdminMapScreen';
-import ManageProductsScreen from '../screens/admin/ManageProductsScreen';
-import AdminSettingsScreen from '../screens/admin/AdminSettingsScreen';
-import ProductCreateScreen from '../screens/admin/ProductCreateScreen';
-import ProductEditScreen from '../screens/admin/ProductEditScreen';
-import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
+import AdminHomeScreen from '../screens/admin/AdminHome';
+import AdminMapScreen from '../screens/admin/AdminMap';
+import ManageProductsScreen from '../screens/admin/ManageProducts';
+import AdminSettingsScreen from '../screens/admin/AdminSettings';
+import ProductCreateScreen from '../screens/admin/ProductCreate';
+import ProductEditScreen from '../screens/admin/ProductEdit';
+import AdminProfileScreen from '../screens/admin/AdminProfile';
 
 // SVGs Admin Barra (Tela 2)
 import HomeIcon from '../assets/tela2/barra/Home.svg';
+import HomeIconDark from '../assets/tela2/barra/HomeDark.svg';
 import HomeLabel from '../assets/tela2/barra/Menu.svg';
 import MapIcon from '../assets/tela2/barra/Map.svg';
+import MapIconDark from '../assets/tela2/barra/MapDark.svg';
 import MapLabel from '../assets/tela2/barra/Mapa.svg';
 import ManageIcon from '../assets/tela2/barra/Manage.svg';
+import ManageIconDark from '../assets/tela2/barra/ManageDark.svg';
 import ManageLabel from '../assets/tela2/barra/Gerenciar.svg';
 import GearIcon from '../assets/tela2/barra/Gear.svg';
+import GearIconDark from '../assets/tela2/barra/GearDark.svg';
 import OpcoesLabel from '../assets/tela2/barra/Opções.svg';
 
 // SVGs Admin Barra (Tela 3 - Mapa ativo)
 import HomeIcon3 from '../assets/tela3/barra/Home.svg';
+import HomeIconDark3 from '../assets/tela3/barra/HomeDark.svg';
 import HomeLabel3 from '../assets/tela3/barra/Menu.svg';
 import MapIcon3 from '../assets/tela3/barra/Map.svg';
+import MapIconDark3 from '../assets/tela3/barra/MapDark.svg';
 import MapLabel3 from '../assets/tela3/barra/Mapa.svg';
 import ManageIcon3 from '../assets/tela3/barra/Manage.svg';
+import ManageIconDark3 from '../assets/tela3/barra/ManageDark.svg';
 import ManageLabel3 from '../assets/tela3/barra/Gerenciar.svg';
 import GearIcon3 from '../assets/tela3/barra/Gear.svg';
+import GearIconDark3 from '../assets/tela3/barra/GearDark.svg';
 import OpcoesLabel3 from '../assets/tela3/barra/Opções.svg';
 
 // SVGs Admin Barra (Tela 4 - Opções ativo)
 import HomeIcon4 from '../assets/tela4/barra/Home.svg';
+import HomeIconDark4 from '../assets/tela4/barra/HomeDark.svg';
 import HomeLabel4 from '../assets/tela4/barra/Menu.svg';
 import MapIcon4 from '../assets/tela4/barra/Map.svg';
+import MapIconDark4 from '../assets/tela4/barra/MapDark.svg';
 import MapLabel4 from '../assets/tela4/barra/Mapa.svg';
 import ManageIcon4 from '../assets/tela4/barra/Manage.svg';
+import ManageIconDark4 from '../assets/tela4/barra/ManageDark.svg';
 import ManageLabel4 from '../assets/tela4/barra/Gerenciar.svg';
 import GearIcon4 from '../assets/tela4/barra/Gear.svg';
+import GearIconDark4 from '../assets/tela4/barra/GearDark.svg';
 import OpcoesLabel4 from '../assets/tela4/barra/Opções.svg';
 
 // SVGs Admin Barra (Tela 7 - Gerenciar ativo)
 import HomeIcon7 from '../assets/tela7/barra de baix/Adicionar/Remover/Home.svg';
+import HomeIconDark7 from '../assets/tela7/barra de baix/Adicionar/Remover/HomeDark.svg';
 import HomeLabel7 from '../assets/tela7/barra de baix/Adicionar/Remover/Menu.svg';
 import MapIcon7 from '../assets/tela7/barra de baix/Adicionar/Remover/Map.svg';
+import MapIconDark7 from '../assets/tela7/barra de baix/Adicionar/Remover/MapDark.svg';
 import MapLabel7 from '../assets/tela7/barra de baix/Adicionar/Remover/Mapa.svg';
 import ManageIcon7 from '../assets/tela7/barra de baix/Adicionar/Remover/Manage.svg';
+import ManageIconDark7 from '../assets/tela7/barra de baix/Adicionar/Remover/ManageDark.svg';
 import ManageLabel7 from '../assets/tela7/barra de baix/Adicionar/Remover/Gerenciar.svg';
 import GearIcon7 from '../assets/tela7/barra de baix/Adicionar/Remover/Gear.svg';
+import GearIconDark7 from '../assets/tela7/barra de baix/Adicionar/Remover/GearDark.svg';
 import OpcoesLabel7 from '../assets/tela7/barra de baix/Adicionar/Remover/Opções.svg';
 import FundoAtivoSvg from '../assets/tela8/barra de baixo/Fundo.svg';
 
@@ -87,46 +103,46 @@ export default function AdminTabs() {
 
 const tabConfigs: any = {
   Home: {
-    Home: { Icon: HomeIcon, Label: HomeLabel, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon, Label: MapLabel, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon, Label: ManageLabel, labelW: 55, labelH: 10 },
-    Opções: { Icon: GearIcon, Label: OpcoesLabel, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon, IconDark: HomeIconDark, Label: HomeLabel, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon, IconDark: MapIconDark, Label: MapLabel, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon, IconDark: ManageIconDark, Label: ManageLabel, labelW: 55, labelH: 10 },
+    Opções: { Icon: GearIcon, IconDark: GearIconDark, Label: OpcoesLabel, labelW: 42, labelH: 12 },
   },
   Mapa: {
-    Home: { Icon: HomeIcon3, Label: HomeLabel3, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon3, Label: MapLabel3, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon3, Label: ManageLabel3, labelW: 55, labelH: 10 },
-    Opções: { Icon: GearIcon3, Label: OpcoesLabel3, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon3, IconDark: HomeIconDark3, Label: HomeLabel3, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon3, IconDark: MapIconDark3, Label: MapLabel3, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon3, IconDark: ManageIconDark3, Label: ManageLabel3, labelW: 55, labelH: 10 },
+    Opções: { Icon: GearIcon3, IconDark: GearIconDark3, Label: OpcoesLabel3, labelW: 42, labelH: 12 },
   },
   Gerenciar: {
-    Home: { Icon: HomeIcon7, Label: HomeLabel7, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon7, Label: MapLabel7, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
-    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon7, IconDark: HomeIconDark7, Label: HomeLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, IconDark: MapIconDark7, Label: MapLabel7, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon7, IconDark: ManageIconDark7, Label: ManageLabel7, labelW: 57, labelH: 10 },
+    Opções: { Icon: GearIcon7, IconDark: GearIconDark7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
   Opções: {
-    Home: { Icon: HomeIcon4, Label: HomeLabel4, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon4, Label: MapLabel4, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon4, Label: ManageLabel4, labelW: 55, labelH: 10 },
-    Opções: { Icon: GearIcon4, Label: OpcoesLabel4, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon4, IconDark: HomeIconDark4, Label: HomeLabel4, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon4, IconDark: MapIconDark4, Label: MapLabel4, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon4, IconDark: ManageIconDark4, Label: ManageLabel4, labelW: 55, labelH: 10 },
+    Opções: { Icon: GearIcon4, IconDark: GearIconDark4, Label: OpcoesLabel4, labelW: 42, labelH: 12 },
   },
   ProductCreateScreen: {
-    Home: { Icon: HomeIcon7, Label: HomeLabel7, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon7, Label: MapLabel7, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
-    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon7, IconDark: HomeIconDark7, Label: HomeLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, IconDark: MapIconDark7, Label: MapLabel7, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon7, IconDark: ManageIconDark7, Label: ManageLabel7, labelW: 57, labelH: 10 },
+    Opções: { Icon: GearIcon7, IconDark: GearIconDark7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
   ProductEditScreen: {
-    Home: { Icon: HomeIcon7, Label: HomeLabel7, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon7, Label: MapLabel7, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon7, Label: ManageLabel7, labelW: 57, labelH: 10 },
-    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon7, IconDark: HomeIconDark7, Label: HomeLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, IconDark: MapIconDark7, Label: MapLabel7, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon7, IconDark: ManageIconDark7, Label: ManageLabel7, labelW: 57, labelH: 10 },
+    Opções: { Icon: GearIcon7, IconDark: GearIconDark7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
   AdminProfile: {
-    Home: { Icon: HomeIcon4, Label: HomeLabel4, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon4, Label: MapLabel4, labelW: 32, labelH: 12 },
-    Gerenciar: { Icon: ManageIcon4, Label: ManageLabel4, labelW: 55, labelH: 10 },
-    Opções: { Icon: GearIcon, Label: OpcoesLabel, labelW: 42, labelH: 12 },
+    Home: { Icon: HomeIcon4, IconDark: HomeIconDark4, Label: HomeLabel4, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon4, IconDark: MapIconDark4, Label: MapLabel4, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon4, IconDark: ManageIconDark4, Label: ManageLabel4, labelW: 55, labelH: 10 },
+    Opções: { Icon: GearIcon, IconDark: GearIconDark, Label: OpcoesLabel, labelW: 42, labelH: 12 },
   },
 };
 
@@ -196,7 +212,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
       top: 12,
     },
     isDarkMode
-      ? { backgroundColor: '#FFFFFF' }
+      ? { backgroundColor: '#2E2E38' }
       : { backgroundColor: '#E3DAD9', borderWidth: 0 }
   ];
 
@@ -226,7 +242,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
           const config = (tabConfigs[activeTab] || tabConfigs.Home)[route.name];
           if (!config) return null;
 
-          const { Icon, Label, labelW, labelH } = config;
+          const { Icon, IconDark, Label, labelW, labelH } = config;
           const iconColor = isDarkMode ? (isTabActive ? '#FFD700' : '#FFFFFF') : undefined;
 
           return (
@@ -252,12 +268,11 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
                 }}
               >
                 <View style={styles.iconBg}>
-                  <Icon 
-                    width={32} 
-                    height={32} 
-                    fill={iconColor} 
-                    stroke={iconColor} 
-                  />
+                  {isDarkMode ? (
+                    <IconDark width={32} height={32} />
+                  ) : (
+                    <Icon width={32} height={32} />
+                  )}
                 </View>
                 <Label 
                   width={labelW} 

@@ -1,14 +1,14 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import AdminTabs from './AdminTabs';
-import ManageProductsScreen from '../screens/admin/ManageProductsScreen';
-import ProductCreateScreen from '../screens/admin/ProductCreateScreen';
+import ManageProductsScreen from '../screens/admin/ManageProducts';
+import ProductCreateScreen from '../screens/admin/ProductCreate';
 import OrdersScreen from '../screens/admin/OrdersScreen';
-import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
-import AdminSalesHistoryScreen from '../screens/admin/AdminSalesHistoryScreen';
-import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetailScreen';
-import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
-import AdminConsultSalesScreen from '../screens/admin/AdminConsultSalesScreen';
+import AdminOrdersScreen from '../screens/admin/AdminOrders';
+import AdminSalesHistoryScreen from '../screens/admin/AdminSalesHistory';
+import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetail';
+import AdminDashboardScreen from '../screens/admin/AdminDashboard';
+import AdminConsultSalesScreen from '../screens/admin/AdminConsultSales';
 
 const Stack = createStackNavigator();
 

@@ -7,7 +7,7 @@ import { ThemeProvider } from '../../presentation/contexts/ThemeContext';
 import * as SecureStore from 'expo-secure-store';
 
 // Mock components used in Tabs returning default ESM exports to prevent element undefined errors
-jest.mock('../../presentation/screens/admin/AdminHomeScreen', () => {
+jest.mock('../../presentation/screens/admin/AdminHome', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -15,7 +15,7 @@ jest.mock('../../presentation/screens/admin/AdminHomeScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-home-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/AdminMapScreen', () => {
+jest.mock('../../presentation/screens/admin/AdminMap', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -23,7 +23,7 @@ jest.mock('../../presentation/screens/admin/AdminMapScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-map-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/ManageProductsScreen', () => {
+jest.mock('../../presentation/screens/admin/ManageProducts', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -31,7 +31,7 @@ jest.mock('../../presentation/screens/admin/ManageProductsScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-manage-products-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/AdminSettingsScreen', () => {
+jest.mock('../../presentation/screens/admin/AdminSettings', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -39,7 +39,7 @@ jest.mock('../../presentation/screens/admin/AdminSettingsScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-settings-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/ProductCreateScreen', () => {
+jest.mock('../../presentation/screens/admin/ProductCreate', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -47,7 +47,7 @@ jest.mock('../../presentation/screens/admin/ProductCreateScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-product-create-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/ProductEditScreen', () => {
+jest.mock('../../presentation/screens/admin/ProductEdit', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
@@ -55,7 +55,7 @@ jest.mock('../../presentation/screens/admin/ProductEditScreen', () => {
     default: () => React.createElement(View, { testID: 'mock-product-edit-screen' })
   };
 });
-jest.mock('../../presentation/screens/admin/AdminProfileScreen', () => {
+jest.mock('../../presentation/screens/admin/AdminProfile', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {

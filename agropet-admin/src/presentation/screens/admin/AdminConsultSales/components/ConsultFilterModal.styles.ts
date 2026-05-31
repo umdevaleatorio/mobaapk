@@ -1,0 +1,108 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whiteModalContainer: {
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  whiteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalSubsectionHeader: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  modalFilterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  modalFilterLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  radioCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#A8A8B3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioChecked: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#25BE36',
+  },
+  checkboxSquare: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#A8A8B3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalUtilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  utilityText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalConfirmBtn: {
+    flex: 1.5,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+});

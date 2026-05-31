@@ -10,7 +10,8 @@ This workflow governs the AI agent's behavior during any test coverage task. The
 
 ## The Mandate
 
-> **Coverage must be 100% on all four axes. This is not a goal. This is a hard constraint.**
+> **1. All tests MUST PASS.** A failing test is an immediate failure of the session. If tests fail, you must fix them.
+> **2. Coverage must be 100% on all four axes.** This is not a goal. This is a hard constraint.
 
 | Metric    | Required |
 |-----------|----------|
@@ -58,9 +59,12 @@ npm run test:coverage
 
 Do NOT skip this step. Do NOT use cached results. Do NOT assume the current state of coverage.
 
-Wait for the full output to appear. The coverage table will be printed in the terminal.
+Wait for the full output to appear. 
 
----
+**CRITICAL STEP:** Before looking at the coverage table, check if any tests FAILED.
+If any tests failed (`failed` in the test summary), you MUST fix the failing tests before attempting to improve coverage. A test suite that fails cannot have valid coverage.
+
+If all tests passed, proceed to parse the coverage table printed in the terminal.
 
 ### 2. Parse the Terminal Output — Auto-Identify Uncovered Files
 
@@ -211,8 +215,8 @@ All metrics are at 100%.
 This workflow can be invoked at any time:
 
 - **After implementing features**: Run immediately after new code is written to prevent coverage debt
-- **During debugging**: If tests are failing, fix the tests first, then re-check coverage
-- **On CI failures**: Use this workflow to identify and eliminate all coverage gaps before merging
+- **During debugging**: If tests are failing, use this workflow to fix the tests first, then re-check coverage
+- **On CI failures**: Use this workflow to identify and eliminate all failing tests and coverage gaps before merging
 - **As a standalone session**: Can be run on any project with Jest coverage configured
 
 When invoked, always start from step 1 (run the command) — never assume you know the current state.

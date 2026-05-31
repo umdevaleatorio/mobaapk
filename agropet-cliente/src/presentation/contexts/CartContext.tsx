@@ -55,6 +55,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       console.warn('Database is not initialized yet in CartContext.');
       return;
     }
+    if (!product || !product.id) {
+      console.warn('Cannot add product without a valid id');
+      return;
+    }
     
     try {
       // Verifica primeiro direto no banco para evitar conflitos (race conditions de async state)
@@ -81,7 +85,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const removeFromCart = async (id: string) => {
-    if (!db) return;
+    if (!db || id === undefined || id === null) return;
     try {
       await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
       await loadCart(db);

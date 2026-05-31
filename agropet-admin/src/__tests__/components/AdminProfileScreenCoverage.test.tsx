@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
-import AdminProfileScreen from '../../presentation/screens/admin/AdminProfileScreen';
+import AdminProfileScreen from '../../presentation/screens/admin/AdminProfile';
 import { AuthContext } from '../../presentation/contexts/AuthContext';
 import { ThemeProvider } from '../../presentation/contexts/ThemeContext';
 import { UserMenuProvider } from '../../presentation/contexts/UserMenuContext';

@@ -9,7 +9,7 @@ import { supabase } from '../../data/datasources/supabase/client';
 import { Alert, TouchableOpacity, Platform } from 'react-native';
 
 // Import screen
-import AdminSalesHistoryScreen from '../../presentation/screens/admin/AdminSalesHistoryScreen';
+import AdminSalesHistoryScreen from '../../presentation/screens/admin/AdminSalesHistory';
 
 // Mock React's useState to intercept pickerMode initialization and setters
 jest.mock('react', () => {
@@ -681,13 +681,13 @@ describe('AdminSalesHistoryScreen - Deep Coverage', () => {
     jest.isolateModules(() => {
       const rn = require('react-native');
       rn.Platform.OS = 'ios';
-      require('../../presentation/screens/admin/AdminSalesHistoryScreen');
+      require('../../presentation/screens/admin/AdminSalesHistory');
     });
 
     jest.isolateModules(() => {
       const rn = require('react-native');
       rn.Platform.OS = 'android';
-      require('../../presentation/screens/admin/AdminSalesHistoryScreen');
+      require('../../presentation/screens/admin/AdminSalesHistory');
     });
   });
 });

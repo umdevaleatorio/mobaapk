@@ -23,12 +23,12 @@ jest.mock('../../presentation/screens/SplashScreen', () => {
   const { Text } = require('react-native');
   return () => React.createElement('Text', null, 'SplashScreen');
 });
-jest.mock('../../presentation/screens/auth/ClientLoginScreen', () => {
+jest.mock('../../presentation/screens/auth/ClientLogin', () => {
   const React = require('react');
   const { Text } = require('react-native');
   return () => React.createElement('Text', null, 'ClientLoginScreen');
 });
-jest.mock('../../presentation/screens/auth/RegisterScreen', () => {
+jest.mock('../../presentation/screens/auth/Register', () => {
   const React = require('react');
   const { Text } = require('react-native');
   return () => React.createElement('Text', null, 'RegisterScreen');

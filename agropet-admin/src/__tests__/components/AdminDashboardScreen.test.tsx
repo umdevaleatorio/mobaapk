@@ -34,7 +34,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
 });
 
 // Import screen
-import AdminDashboardScreen from '../../presentation/screens/admin/AdminDashboardScreen';
+import AdminDashboardScreen from '../../presentation/screens/admin/AdminDashboard';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
@@ -1758,5 +1758,101 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     if (overlays.length > 0) {
       fireEvent.press(overlays[0]);
     }
+  });
+
+  // ── useAdminDashboardCharts hook direct branch coverage ──
+  describe('useAdminDashboardCharts branch coverage', () => {
+    function makeOrder(hour: number, total: number, dayOffset = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + dayOffset);
+      d.setHours(hour, 0, 0, 0);
+      return { created_at: d.toISOString(), total };
+    }
+
+    it('covers all hour bucket branches and ?? nullish in single-day mode', () => {
+      const { useAdminDashboardCharts } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboardCharts');
+      let result: any;
+      function Test() {
+        const charts = useAdminDashboardCharts([
+          makeOrder(7, null as any),  // <9, null
+          makeOrder(8, 10),           // <9, non-null → slot0=10
+          makeOrder(9, null as any),  // <11, null
+          makeOrder(10, 20),          // <11, non-null → slot1=20
+          makeOrder(11, null as any), // <13, null
+          makeOrder(12, 30),          // <13, non-null → slot2=30
+          makeOrder(13, null as any), // <15, null
+          makeOrder(14, 40),          // <15, non-null → slot3=40
+          makeOrder(15, null as any), // <17, null
+          makeOrder(16, 50),          // <17, non-null → slot4=50
+          makeOrder(17, null as any), // else, null
+          makeOrder(18, 60),          // else, non-null → slot5=60
+        ]);
+        result = charts.generateChartPoints();
+        return null;
+      }
+      render(React.createElement(Test));
+      expect(result).toBeDefined();
+      expect(result.points).toHaveLength(6);
+      [10, 20, 30, 40, 50, 60].forEach((v, i) => expect(result.points[i].value).toBe(v));
+    });
+
+    it('covers range mode path and ?? null branch in else', () => {
+      const { useAdminDashboardCharts } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboardCharts');
+      let result: any;
+      function Test() {
+        const today = new Date();
+        const prev = new Date(today);
+        prev.setDate(prev.getDate() - 3);
+        const future = new Date(today);
+        future.setDate(future.getDate() + 3);
+        const charts = useAdminDashboardCharts([
+          { created_at: prev.toISOString(), total: 30 }, // within range, if branch
+          { created_at: today.toISOString(), total: null }, // within range, ?? null in if
+          { created_at: future.toISOString(), total: null }, // outside range, else + ?? null (line 154)
+          { created_at: future.toISOString(), total: 99 }, // outside range, else + ?? non-null (line 154)
+        ]);
+        React.useEffect(() => {
+          charts.setIsRange(true);
+          charts.setStartDate(prev);
+          charts.setEndDate(today);
+        }, []);
+        React.useEffect(() => {
+          if (charts.isRange) result = charts.generateChartPoints();
+        });
+        return null;
+      }
+      render(React.createElement(Test));
+      expect(result).toBeDefined();
+    });
+
+    it('covers handleChartDateSelect all branches', () => {
+      const { useAdminDashboardCharts } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboardCharts');
+      function Test() {
+        const charts = useAdminDashboardCharts([]);
+        React.useEffect(() => {
+          charts.handleChartDateSelect('unknown', new Date());
+          charts.handleChartDateSelect('single', new Date(2026, 5, 15));
+          charts.handleChartDateSelect('range_start', new Date());
+          charts.handleChartDateSelect('range_end', new Date());
+        }, []);
+        return null;
+      }
+      render(React.createElement(Test));
+    });
+
+    it('covers getDynamicTitle with hasFiltered false and handleCloseSundayHolidayModal', () => {
+      const { useAdminDashboardCharts } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboardCharts');
+      function Test() {
+        const charts = useAdminDashboardCharts([]);
+        React.useEffect(() => {
+          charts.setHasFiltered(false);
+          charts.getDynamicTitle();
+          charts.setShowSundayHolidayModal(true);
+          charts.handleCloseSundayHolidayModal();
+        }, []);
+        return null;
+      }
+      render(React.createElement(Test));
+    });
   });
 });

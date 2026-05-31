@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 
 // Import screens
-import AdminOrderDetailScreen from '../../presentation/screens/admin/AdminOrderDetailScreen';
+import AdminOrderDetailScreen from '../../presentation/screens/admin/AdminOrderDetail';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
@@ -206,7 +206,7 @@ describe('AdminOrderDetailScreen - Deep Coverage', () => {
     };
 
     const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute, navigation: { goBack: mockGoBack } });
-    expect(getByText('Nº do Pedido')).toBeTruthy();
+    expect(getByText('N° do Pedido')).toBeTruthy();
     expect(getByText('Pendente')).toBeTruthy();
     expect(getByText('Ração')).toBeTruthy();
     expect(getByText('João')).toBeTruthy();

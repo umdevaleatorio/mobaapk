@@ -52,7 +52,7 @@ jest.mock('react', () => {
 });
 
 // Import screen
-import AdminConsultSalesScreen from '../../presentation/screens/admin/AdminConsultSalesScreen';
+import AdminConsultSalesScreen from '../../presentation/screens/admin/AdminConsultSales';
 
 // ── Mock ThemeContext dynamically to support Dark Mode queries ──
 const mockToggleTheme = jest.fn();
@@ -871,7 +871,8 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
     });
 
     // 3. Trigger datetimepicker onChange with null or dismissed set
-    fireEvent.press(getByText('27/5 - 31/5'));
+    const expectedRangeText = `${yesterday.getDate()}/${yesterday.getMonth() + 1} - ${tomorrow.getDate()}/${tomorrow.getMonth() + 1}`;
+    fireEvent.press(getByText(expectedRangeText));
     await act(async () => {
       fireEvent.press(getByText('Dia Único'));
     });
@@ -1230,7 +1231,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
         value: 'ios',
         writable: true
       });
-      const Screen = require('../../presentation/screens/admin/AdminConsultSalesScreen').default;
+      const Screen = require('../../presentation/screens/admin/AdminConsultSales').default;
       expect(Screen).toBeTruthy();
     });
     Object.defineProperty(Platform, 'OS', {

@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 
 // Import screen
-import AdminProfileScreen from '../../presentation/screens/admin/AdminProfileScreen';
+import AdminProfileScreen from '../../presentation/screens/admin/AdminProfile';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
@@ -638,7 +638,7 @@ describe('AdminProfileScreen - Deep Coverage', () => {
     fireEvent.changeText(ruaInput, 'Rua Nova');
     fireEvent.changeText(bairroInput, 'Bairro Novo');
     const cepInput = getByPlaceholderText('00000-000');
-    const numInput = getByPlaceholderText('N°');
+    const numInput = getByPlaceholderText('Nº');
     fireEvent.changeText(cepInput, '37480-000');
     fireEvent.changeText(numInput, '150');
 
@@ -695,7 +695,7 @@ describe('AdminProfileScreen - Deep Coverage', () => {
     // Trigger onSubmitEditing when empty
     const ruaInput = getByPlaceholderText('Digite sua rua...');
     const cepInput = getByPlaceholderText('00000-000');
-    const numInput = getByPlaceholderText('N°');
+    const numInput = getByPlaceholderText('Nº');
     fireEvent.changeText(ruaInput, '');
     fireEvent(ruaInput, 'submitEditing');
     fireEvent.changeText(cepInput, '');

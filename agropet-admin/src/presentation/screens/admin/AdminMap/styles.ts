@@ -1,0 +1,70 @@
+import { StyleSheet, Platform } from 'react-native';
+
+export const styles = StyleSheet.create({
+  mainContainer: { flex: 1, backgroundColor: '#F5F5F5' },
+  mapContainer: {
+    flex: 1, marginHorizontal: 12, marginTop: 8, marginBottom: 112, borderRadius: 20, overflow: 'hidden',
+  },
+  map: { flex: 1 },
+  searchContainer: {
+    position: 'absolute', top: 15, left: 15, right: 15, zIndex: 10, elevation: 10,
+  },
+  searchInputWrapper: {
+    backgroundColor: '#FFFFFF', borderRadius: 25, height: 50, paddingHorizontal: 20,
+    justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 4, elevation: 5,
+  },
+  searchInput: { flex: 1, fontSize: 16, color: '#333' },
+  suggestionsList: {
+    backgroundColor: '#FFFFFF', borderRadius: 15, marginTop: 5, paddingVertical: 5,
+    maxHeight: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 4, elevation: 5,
+  },
+  suggestionItem: {
+    paddingVertical: 10, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+  },
+  suggestionText: { fontSize: 14, color: '#333' },
+  recenterBtn: {
+    position: 'absolute', bottom: 20, left: 15, width: 48, height: 48, backgroundColor: '#FFFFFF',
+    borderRadius: 8, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 3, zIndex: 10, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#EFEFEF',
+  },
+  setStoreBtn: {
+    position: 'absolute', bottom: 20, left: 75, width: 48, height: 48, backgroundColor: '#FFFFFF',
+    borderRadius: 8, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 3, zIndex: 10, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#EFEFEF',
+  },
+  legendBox: {
+    position: 'absolute', bottom: 20, right: 15, backgroundColor: '#FFFFFF', borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 14, elevation: 5, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, zIndex: 10, gap: 8,
+  },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendText: { fontSize: 12, color: '#333333', fontWeight: '600' },
+  trackingBadge: {
+    position: 'absolute', top: 100, alignSelf: 'center', backgroundColor: '#1a3a6b',
+    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 16, alignItems: 'center',
+    elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 3, zIndex: 10,
+  },
+  trackingBadgeText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold', marginBottom: 2 },
+  trackingBadgeSubtext: { color: '#E0E0E0', fontSize: 12, fontWeight: '600' },
+  emRotaContainer: {
+    position: 'absolute', top: Platform.OS === 'ios' ? 50 : 40, alignSelf: 'center',
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20,
+    borderRadius: 20, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 4.65, zIndex: 99, gap: 8,
+  },
+  pulseContainer: { justifyContent: 'center', alignItems: 'center' },
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50' },
+  emRotaText: { fontSize: 14, fontWeight: 'bold', letterSpacing: 0.5 },
+  backBtn: {
+    position: 'absolute', bottom: 20, left: 15, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25,
+    borderWidth: 1.5, gap: 8, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 3.84, zIndex: 99,
+  },
+  backBtnText: { fontSize: 14, fontWeight: 'bold' },
+});

@@ -40,7 +40,7 @@ export class ProcessPDVCheckoutUseCase {
       items,
       total,
       0,
-      'pending',
+      'confirmed',
       deliveryAddress,
       coordinates
     );

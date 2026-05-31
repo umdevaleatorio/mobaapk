@@ -2,18 +2,18 @@ import React from 'react';
 import { render, act, waitFor } from '@testing-library/react-native';
 
 // Import Screens
-import CartScreen from '../../presentation/screens/client/CartScreen';
-import HomeScreen from '../../presentation/screens/client/HomeScreen';
-import MapScreen from '../../presentation/screens/client/MapScreen';
+import CartScreen from '../../presentation/screens/client/Cart';
+import HomeScreen from '../../presentation/screens/client/Home';
+import MapScreen from '../../presentation/screens/client/Map';
 import MapTest from '../../presentation/screens/client/MapTest';
-import OrderDetailScreen from '../../presentation/screens/client/OrderDetailScreen';
-import OrdersScreen from '../../presentation/screens/client/OrdersScreen';
+import OrderDetailScreen from '../../presentation/screens/client/OrderDetail';
+import { OrdersScreen } from '../../presentation/screens/client/Orders';
 import PaymentConfirmScreen from '../../presentation/screens/client/PaymentConfirmScreen';
-import PaymentScreen from '../../presentation/screens/client/PaymentScreen';
-import ProductDetailScreen from '../../presentation/screens/client/ProductDetailScreen';
-import ProfileScreen from '../../presentation/screens/client/ProfileScreen';
-import SettingsScreen from '../../presentation/screens/client/SettingsScreen';
-import TrackingScreen from '../../presentation/screens/client/TrackingScreen';
+import PaymentScreen from '../../presentation/screens/client/Payment';
+import ProductDetailScreen from '../../presentation/screens/client/ProductDetail';
+import ProfileScreen from '../../presentation/screens/client/Profile';
+import SettingsScreen from '../../presentation/screens/client/Settings';
+import TrackingScreen from '../../presentation/screens/client/Tracking';
 
 // ── Mocks ──
 const mockRoute = {

@@ -8,19 +8,19 @@ import AdminStack from '../../presentation/navigation/AdminStack';
 import AuthStack from '../../presentation/navigation/AuthStack';
 
 // ── Mock all Screens to avoid any runtime side effects ──
-jest.mock('../../presentation/screens/admin/ManageProductsScreen', () => () => null);
+jest.mock('../../presentation/screens/admin/ManageProducts', () => () => null);
 jest.mock('../../presentation/screens/admin/OrdersScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminOrdersScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminSalesHistoryScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminOrderDetailScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminDashboardScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminConsultSalesScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminHomeScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminMapScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminSettingsScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/AdminProfileScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/ProductCreateScreen', () => () => null);
-jest.mock('../../presentation/screens/admin/ProductEditScreen', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminOrders', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminSalesHistory', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminOrderDetail', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminDashboard', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminConsultSales', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminHome', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminMap', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminSettings', () => () => null);
+jest.mock('../../presentation/screens/admin/AdminProfile', () => () => null);
+jest.mock('../../presentation/screens/admin/ProductCreate', () => () => null);
+jest.mock('../../presentation/screens/admin/ProductEdit', () => () => null);
 jest.mock('../../presentation/screens/auth/AdminLoginScreen', () => () => null);
 
 // Mock Supabase

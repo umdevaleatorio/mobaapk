@@ -2,7 +2,7 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../data/datasources/supabase/client';
-import AdminDashboardScreen from '../../presentation/screens/admin/AdminDashboardScreen';
+import AdminDashboardScreen from '../../presentation/screens/admin/AdminDashboard';
 
 // ── Mock do SecureStore ──
 const mockTransactions = [

@@ -190,43 +190,61 @@ Novas e inovadoras mecânicas de comportamento visual e de negócios estão cata
 
 Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente implementadas e agregadas ao ecossistema do **AgroPet Lambari**:
 
-### 📊 1. Seleção de Datas para Consulta de Ganhos
+### ⏰ 1. Mensagens e Saudações Customizadas com Inteligência de Funcionamento
+*   **Saudação Dinâmica por Nome:** Busca do banco de dados do Supabase o primeiro nome do usuário ativo (cliente ou administrador) e o saúda conforme o horário local (Bom dia/Boa noite) com focus-sincronização reativa.
+*   **Biblioteca de Horários com Algoritmo Feriados:** Criamos um motor de cálculo astronômico que determina feriados nacionais móveis no Brasil (Carnaval, Páscoa, Corpus Christi) e fixos.
+*   **Contador Regressivo Inteligente:** Exibição em tempo real (atualizada segundo a segundo) do tempo restante de expediente, mostrando campo de dias para inatividades maiores de 24h (fins de semana).
+*   **Barra de Saudação Descartável e Persistente:** O card pode ser fechado no botão `X` da home (executando animação de rotação 180º, escala de 1 a 0 e fadeout completo), sincronizando seu estado via `SecureStore` (chave `'show_greeting_bar'`) com um toggle switch nas Configurações com animação de entrada fade/scale premium.
+
+### 📊 2. Seleção de Datas para Consulta de Ganhos
 *   **Duplo Modo de Filtragem:** O administrador pode somar faturamento e auditar despesas por **Dia Único** ou **Período Personalizado**.
 *   **In-Modal Date Picker Dashboard:** Painel inovador contendo duas linhas interativas de Início e Fim que abrem os pickers de forma independente, evitando overlaps e travamentos.
 *   **Validação de Domingo/Feriados com Reversão Automática:** Se o admin selecionar um dia em que a loja esteve inativa, o app exibe uma tela branca informativa e reverte de forma automática e silenciosa a seleção para o último intervalo válido anterior.
 
-### 🎛️ 2. Painel de Vendas / Caixa e Sangria
+### 🎛️ 3. Painel de Vendas / Caixa e Sangria
 *   **Saldo Permanente Global:** O card de Caixa no topo atua de forma separada dos filtros do dashboard, acumulando todo o faturamento transacional e debitando todas as retiradas desde o início do aplicativo.
 *   **Caixa com Gaveta Negativa:** As sangrias (despesas da loja) podem levar a gaveta de dinheiro físico ao negativo. Quando isso ocorre, o saldo do caixa e a bolinha do pulsar ativo de caixa mudam dinamicamente para **Vermelho Claro** (`#FF5252`), sinalizando déficit.
 *   **Máscara de Valor Reativa:** O modal de sangria possui input numérico inteligente com máscara em tempo real em R$, persistido de forma segura via `SecureStore`.
 *   **Gráfico SVG Dinâmico Verde Água:** Desenho completo e responsivo de curvas suavizadas (Bezier) usando `<Svg>` com preenchimento degradê **Verde Água** (`#00BFA5`).
 *   **Métricas Segmentadas:** Ticket Médio customizado em verde registry (`#339914`) e Qtd. Pedidos em Verde Água (`#00BFA5`) no claro e marfim (`#FFE082`) no escuro.
 
-### 🗂️ 3. Filtro Avançado e Alertas de Estoque Reativos
+### 🗂️ 4. Filtro Avançado e Alertas de Estoque Reativos
 *   **Filtros Unificados e Modernizados:** Unificamos os filtros de controle de catálogo administrativo (*"Todos, Ativos e Inativos"*) em um botão dinâmico e consistente ao de relatórios de vendas.
 *   **Detecção de Baixo Estoque:** Criamos uma subseção para visualizar produtos em **Alerta Amarelo** (atenção) e **Alerta Vermelho** (estoque crítico), adotando a mesma identidade visual e cores dos alertas individuais dos cards.
 *   **Priorização com Exclusão Mutua:** O catálogo ordena e prioriza produtos críticos vermelhos no topo. Além disso, selecionar filtros de alertas anula e impede a seleção da categoria *Inativos* (e vice-versa), garantindo uma navegação coesa.
 
-### ⚙️ 4. Seleção e Desativação em Massa de Produtos
+### ⚙️ 5. Seleção e Desativação em Massa de Produtos
 *   **Operações em Bloco de Performance:** Implementamos um botão de **"Selecionar Tudo"** acoplado a um botão dinâmico de **"Desativar Todos"** (com design branco sofisticado e texto em vermelho, livre de bordas pesadas), simplificando a desativação simultânea de dezenas de itens.
 *   **Alternância Inteligente de Controles:** O botão de desativar em bloco se transforma em **"Cancelar Seleção"** de forma silenciosa e fluida quando o modo de exclusão tradicional é ativado pelo lojista.
 *   **Aviso Destrutivo em Tela Cheia:** Confirmações de desativação em lote exibem uma tela vermelha moderna de conformidade, garantindo a prevenção de erros acidentais do administrador por ser uma ação destrutiva.
 
-### 🎠 5. Carrossel Multi-Fotos (Até 5) com Animação e Opacidade Flanqueada
+### 🎠 6. Carrossel Multi-Fotos (Até 5) com Animação e Opacidade Flanqueada
 *   **Upload de Múltiplas Mídias:** O administrador pode registrar até 5 fotos por produto, que são salvas de forma serializada no banco de dados.
 *   **Visualização Clássica de Flanco (Admin & Cliente):** O carrossel principal exibe a imagem centralizada flanqueada por mini-prévias de opacidade reduzida (`opacity: 0.35`) da imagem anterior e seguinte, acoplados a controles em pílula escura direcional compacta.
 *   **Animação Cross-Fade Catálogo Cliente:** No catálogo do cliente, o card de produtos com múltiplas fotos inicia um looping sutil de transição automática de imagens a cada **5 segundos**, esmaecendo e revelando sequencialmente as fotos para um visual extremamente dinâmico e interativo.
 *   **fallback Estático Coeso:** Telas informativas secundárias (carrinho, histórico, recibo) renderizam estaticamente apenas a primeira foto fixa para otimizar foco e desempenho.
 
-### ⚡ 6. Resolução de Timeouts RLS e Otimizações de Caixa e Histórico
+### ⚡ 7. Resolução de Timeouts RLS e Otimizações de Caixa e Histórico
 *   **Fim de Gargalos de Supabase (Postgres 57014):** Removemos timeouts graves de recursão infinitas em RLS adicionando `SET row_security = off` e passando a posse de `public.is_admin()` para o usuário padrão `postgres`, otimizando checagens administrativas para **menos de 50ms**.
 *   **Desvinculação Estrutural de Caixa e PDV:** Removemos as vendas físicas locais do Fluxo de Caixa ledger (que passa a exibir exclusivamente sangrias e suprimentos manuais), limpando e filtrando dados antigos automaticamente.
 *   **Histórico de Pedidos de Clientes Puro:** Modificamos a tela de histórico de vendas do painel de controle administrativo para ocultar as vendas efetuadas localmente no PDV, mostrando estritamente os pedidos concluídos feitos online por clientes reais.
 
-### 🧪 7. Maximização de Cobertura de Testes e Limpeza Arquitetural (NOVO!!!) — 29/05/2026
+### 🧪 8. Maximização de Cobertura de Testes e Limpeza Arquitetural
 *   **100% Test Coverage nos Módulos de Domínio:** Injeção de testes unitários herméticos garantindo a prova de falhas em Domain Entities e Value Objects cruciais do sistema (Order, Product, StoreLocation, User, etc.).
 *   **Edge Cases e Componentes Complexos:** Aperfeiçoamento dos testes do `AdminMapScreen` para cenários extremos (timeout assíncrono e tracking com duração nula) e mocking avançado do ecossistema de multi-fotos (câmera e galeria) em `ProductEditScreen`.
 *   **Limpeza Arquitetural Absoluta:** Remoção rigorosa de artefatos de testes obsoletos e instâncias desnecessárias (arquivos *index.ts* vazios em use-cases) em ambos os aplicativos, reduzindo acoplamento e enxugando o peso da base de código.
+
+### 🎨 9. Unificação Global de Caixa e Sincronização UI/UX
+*   **Padronização do Caixa Global Unificado:** Sincronização da lógica contábil (Sangrias, Suprimentos, Pix, Cartões) na tela de `Histórico de Vendas`, que antes era particionada, igualando visualmente e funcionalmente com o Painel de Vendas usando o componente de `<CaixaGlobalPanel>`.
+*   **Sincronização Ativa de Estoque Pós-Cancelamento:** Implementada a reversão atômica de produtos físicos devolvidos ao estoque de forma simultânea com a expurgação do valor no cômputo do Caixa Global, garantindo integridade contábil imediata.
+*   **Correção de Vetores e Dark Mode Avançado:** Refatoração de *assets SVG* nas abas da tela de cliente e admin. Implementação de SVGs explícitos `*Dark.svg` para forçar cores brancas em interfaces puramente `#000000`, eliminando as renderizações em marrom e vazamentos de contraste nos botões e tab bars.
+*   **Bateria de Testes Invicta:** Estabilização total alcançando marca de 253/253 testes no Cliente e 512/512 testes passantes no Admin, com timeout handling fixado no `ClientLoginScreen`.
+
+### 🛠️ 10. Refatoração e Bug Fixes Técnicos (NOVO!!!) — 30/05/2026
+*   **Refatoração e Modularização Extrema de Código:** Redução drástica da complexidade de componentes gigantescos (que antes ultrapassavam as 2.000 linhas) para menos de 400 linhas. Isso foi alcançado mediante forte modularização de assets pesados (SVGs embutidos) e separação de responsabilidades, resultando em um código-fonte extremamente leve e manutenível.
+*   **Refatoração de Vetores e Dark Mode:** Desacoplamento de ícones SVG nos menus de navegação (Tab Bars) e injeção dinâmica de propriedades de estilo e arquivos dedicados (`*Dark.svg`), liquidando com os bugs visuais de preenchimentos incorretos (ícones marrons) no tema escuro.
+*   **Bugfix Crítico em Testes e Rastreamento:** Resolução de estouros de timeout do Jest em telas assíncronas (como `ClientLoginScreen`) via encapsulamento de estado (`act`) e conserto de duplicação sintática grave que corrompia a renderização da `TrackingScreen.tsx`.
+*   **Limpeza Arquitetural Final:** Expurgo massivo de arquivos residuais, exclusão de arquivos de log soltos (`.txt`) e descarte de scripts injetores locais em Node (`patch_tabs.js`), entregando um repositório polido e limpo.
 
 ---
 

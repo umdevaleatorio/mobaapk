@@ -20,6 +20,18 @@ jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: any) => children,
 }));
 
+jest.mock('../../presentation/contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    isDarkMode: false,
+    colors: {
+      primary: '#EA841E',
+      backgroundLight: '#F5F5F5',
+      headerBackground: '#1C2434',
+      textPrimary: '#1C2434',
+    },
+  }),
+}));
+
 describe('AppNavigator', () => {
   it('should render loading bar if auth state is loading', () => {
     const { getByText, queryByTestId } = render(
@@ -54,5 +66,28 @@ describe('AppNavigator', () => {
 
     expect(getByTestId('client-stack')).toBeTruthy();
     expect(queryByTestId('auth-stack')).toBeNull();
+  });
+
+  it('should render AuthStack if session exists but user is null', () => {
+    const mockSession = { access_token: 'tok', user: null } as any;
+    const { getByTestId, queryByTestId } = render(
+      <AuthContext.Provider value={{ session: mockSession, user: null, isLoading: false, signOut: jest.fn() }}>
+        <AppNavigator />
+      </AuthContext.Provider>
+    );
+
+    expect(getByTestId('auth-stack')).toBeTruthy();
+    expect(queryByTestId('client-stack')).toBeNull();
+  });
+
+  it('should render AuthStack if session is undefined', () => {
+    const { getByTestId, queryByTestId } = render(
+      <AuthContext.Provider value={{ session: undefined as any, user: null, isLoading: false, signOut: jest.fn() }}>
+        <AppNavigator />
+      </AuthContext.Provider>
+    );
+
+    expect(getByTestId('auth-stack')).toBeTruthy();
+    expect(queryByTestId('client-stack')).toBeNull();
   });
 });

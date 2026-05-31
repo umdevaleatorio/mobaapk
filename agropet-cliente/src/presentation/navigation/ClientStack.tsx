@@ -3,13 +3,13 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { UserMenuProvider } from '../contexts/UserMenuContext';
 import { GlobalUserMenu } from '../components/GlobalUserMenu';
 import ClientTabs from './ClientTabs';
-import ProductDetailScreen from '../screens/client/ProductDetailScreen';
-import PaymentScreen from '../screens/client/PaymentScreen';
+import ProductDetailScreen from '../screens/client/ProductDetail';
+import PaymentScreen from '../screens/client/Payment';
 import PaymentConfirmScreen from '../screens/client/PaymentConfirmScreen';
-import OrdersScreen from '../screens/client/OrdersScreen';
-import OrderDetailScreen from '../screens/client/OrderDetailScreen';
-import TrackingScreen from '../screens/client/TrackingScreen';
-import ProfileScreen from '../screens/client/ProfileScreen';
+import { OrdersScreen } from '../screens/client/Orders';
+import OrderDetailScreen from '../screens/client/OrderDetail';
+import TrackingScreen from '../screens/client/Tracking';
+import ProfileScreen from '../screens/client/Profile';
 
 const Stack = createStackNavigator();
 

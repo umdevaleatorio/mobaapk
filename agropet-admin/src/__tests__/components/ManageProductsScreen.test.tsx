@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { supabase } from '../../data/datasources/supabase/client';
-import ManageProductsScreen from '../../presentation/screens/admin/ManageProductsScreen';
+import ManageProductsScreen from '../../presentation/screens/admin/ManageProducts';
 import { Feather } from '@expo/vector-icons';
 
 // ── Mock Navigation and Route ──

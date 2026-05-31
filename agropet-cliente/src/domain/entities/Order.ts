@@ -8,7 +8,7 @@ export class Order {
     public readonly items: OrderItem[],
     public readonly totalAmount: number,
     public readonly shippingFee: number,
-    public readonly status: 'pending' | 'completed' | 'cancelled',
+    public readonly status: 'confirmed' | 'completed' | 'cancelled',
     public readonly deliveryAddress: string,
     public readonly coordinates?: Coordinates
   ) {

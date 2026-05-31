@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import HomeScreen from '../screens/client/HomeScreen';
-import MapScreen from '../screens/client/MapScreen';
-import CartScreen from '../screens/client/CartScreen';
-import SettingsScreen from '../screens/client/SettingsScreen';
+import HomeScreen from '../screens/client/Home';
+import MapScreen from '../screens/client/Map';
+import CartScreen from '../screens/client/Cart';
+import SettingsScreen from '../screens/client/Settings';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../../data/datasources/supabase/client';
 
 // === BARRA SVGs Tela 4 (Menu ativo, outros inativos) ===
 import HomeIcon from '../assets/tela4/barra/Home.svg';
+import HomeIconDark from '../assets/tela4/barra/HomeDark.svg';
 import MapIcon from '../assets/tela4/barra/Map.svg';
+import MapIconDark from '../assets/tela4/barra/MapDark.svg';
 import CartIcon from '../assets/tela4/barra/Cart.svg';
+import CartIconDark from '../assets/tela4/barra/CartDark.svg';
 import GearIcon from '../assets/tela4/barra/Gear.svg';
+import GearIconDark from '../assets/tela4/barra/GearDark.svg';
 import MenuLabel from '../assets/tela4/barra/MenuLabel.svg';
 import MapaLabel from '../assets/tela4/barra/MapaLabel.svg';
 import CarrinhoLabel from '../assets/tela4/barra/CarrinhoLabel.svg';
@@ -20,9 +24,13 @@ import OpcoesLabel from '../assets/tela4/barra/OpcoesLabel.svg';
 
 // === BARRA SVGs Tela 6 (Mapa ativo, outros inativos) ===
 import HomeIcon6 from '../assets/tela6/barra/Home.svg';
+import HomeIconDark6 from '../assets/tela6/barra/HomeDark.svg';
 import MapIcon6 from '../assets/tela6/barra/Map.svg';
+import MapIconDark6 from '../assets/tela6/barra/MapDark.svg';
 import CartIcon6 from '../assets/tela6/barra/Cart.svg';
+import CartIconDark6 from '../assets/tela6/barra/CartDark.svg';
 import GearIcon6 from '../assets/tela6/barra/Gear.svg';
+import GearIconDark6 from '../assets/tela6/barra/GearDark.svg';
 import MenuLabel6 from '../assets/tela6/barra/MenuLabel.svg';
 import MapaLabel6 from '../assets/tela6/barra/MapaLabel.svg';
 import CarrinhoLabel6 from '../assets/tela6/barra/CarrinhoLabel.svg';
@@ -30,9 +38,13 @@ import OpcoesLabel6 from '../assets/tela6/barra/OpcoesLabel.svg';
 
 // === BARRA SVGs Tela 7 (Opções ativo) ===
 import HomeIcon7 from '../assets/tela7/barra/Home.svg';
+import HomeIconDark7 from '../assets/tela7/barra/HomeDark.svg';
 import MapIcon7 from '../assets/tela7/barra/Map.svg';
+import MapIconDark7 from '../assets/tela7/barra/MapDark.svg';
 import CartIcon7 from '../assets/tela7/barra/Cart.svg';
+import CartIconDark7 from '../assets/tela7/barra/CartDark.svg';
 import GearIcon7 from '../assets/tela7/barra/Gear.svg';
+import GearIconDark7 from '../assets/tela7/barra/GearDark.svg';
 import MenuLabel7 from '../assets/tela7/barra/MenuLabel.svg';
 import MapaLabel7 from '../assets/tela7/barra/MapaLabel.svg';
 import CarrinhoLabel7 from '../assets/tela7/barra/CarrinhoLabel.svg';
@@ -40,9 +52,13 @@ import OpcoesLabel7 from '../assets/tela7/barra/OpcoesLabel.svg';
 
 // === BARRA SVGs Tela 8 (Carrinho ativo) ===
 import HomeIcon8 from '../assets/tela8/barra/Home.svg';
+import HomeIconDark8 from '../assets/tela8/barra/HomeDark.svg';
 import MapIcon8 from '../assets/tela8/barra/Map.svg';
+import MapIconDark8 from '../assets/tela8/barra/MapDark.svg';
 import CartIcon8 from '../assets/tela8/barra/Cart.svg';
+import CartIconDark8 from '../assets/tela8/barra/CartDark.svg';
 import GearIcon8 from '../assets/tela8/barra/Gear.svg';
+import GearIconDark8 from '../assets/tela8/barra/GearDark.svg';
 import MenuLabel8 from '../assets/tela8/barra/MenuLabel.svg';
 import MapaLabel8 from '../assets/tela8/barra/MapaLabel.svg';
 import CarrinhoLabel8 from '../assets/tela8/barra/CarrinhoLabel.svg';
@@ -109,30 +125,30 @@ export default function ClientTabs() {
 // Configs por tab — cada tela ativa tem seus próprios SVGs com cores corretas
 // Tela 4 (Menu ativo): Menu é laranja, outros são neutros
 // Tela 6 (Mapa ativo): Mapa é laranja, outros são neutros
-const tabConfigs: Record<string, Record<string, { Icon: any; Label: any; labelW: number; labelH: number }>> = {
+const tabConfigs: Record<string, Record<string, { Icon: any; IconDark?: any; Label: any; labelW: number; labelH: number }>> = {
   Menu: {
-    Menu: { Icon: HomeIcon, Label: MenuLabel, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon, Label: MapaLabel, labelW: 32, labelH: 12 },
-    Carrinho: { Icon: CartIcon, Label: CarrinhoLabel, labelW: 52, labelH: 10 },
-    Opções: { Icon: GearIcon, Label: OpcoesLabel, labelW: 42, labelH: 12 },
+    Menu: { Icon: HomeIcon, IconDark: HomeIconDark, Label: MenuLabel, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon, IconDark: MapIconDark, Label: MapaLabel, labelW: 32, labelH: 12 },
+    Carrinho: { Icon: CartIcon, IconDark: CartIconDark, Label: CarrinhoLabel, labelW: 52, labelH: 10 },
+    Opções: { Icon: GearIcon, IconDark: GearIconDark, Label: OpcoesLabel, labelW: 42, labelH: 12 },
   },
   Mapa: {
-    Menu: { Icon: HomeIcon6, Label: MenuLabel6, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon6, Label: MapaLabel6, labelW: 32, labelH: 12 },
-    Carrinho: { Icon: CartIcon6, Label: CarrinhoLabel6, labelW: 52, labelH: 10 },
-    Opções: { Icon: GearIcon6, Label: OpcoesLabel6, labelW: 42, labelH: 12 },
+    Menu: { Icon: HomeIcon6, IconDark: HomeIconDark6, Label: MenuLabel6, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon6, IconDark: MapIconDark6, Label: MapaLabel6, labelW: 32, labelH: 12 },
+    Carrinho: { Icon: CartIcon6, IconDark: CartIconDark6, Label: CarrinhoLabel6, labelW: 52, labelH: 10 },
+    Opções: { Icon: GearIcon6, IconDark: GearIconDark6, Label: OpcoesLabel6, labelW: 42, labelH: 12 },
   },
   Carrinho: {
-    Menu: { Icon: HomeIcon8, Label: MenuLabel8, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon8, Label: MapaLabel8, labelW: 32, labelH: 12 },
-    Carrinho: { Icon: CartIcon8, Label: CarrinhoLabel8, labelW: 52, labelH: 10 },
-    Opções: { Icon: GearIcon8, Label: OpcoesLabel8, labelW: 42, labelH: 12 },
+    Menu: { Icon: HomeIcon8, IconDark: HomeIconDark8, Label: MenuLabel8, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon8, IconDark: MapIconDark8, Label: MapaLabel8, labelW: 32, labelH: 12 },
+    Carrinho: { Icon: CartIcon8, IconDark: CartIconDark8, Label: CarrinhoLabel8, labelW: 52, labelH: 10 },
+    Opções: { Icon: GearIcon8, IconDark: GearIconDark8, Label: OpcoesLabel8, labelW: 42, labelH: 12 },
   },
   Opções: {
-    Menu: { Icon: HomeIcon7, Label: MenuLabel7, labelW: 33, labelH: 9 },
-    Mapa: { Icon: MapIcon7, Label: MapaLabel7, labelW: 32, labelH: 12 },
-    Carrinho: { Icon: CartIcon7, Label: CarrinhoLabel7, labelW: 52, labelH: 10 },
-    Opções: { Icon: GearIcon7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+    Menu: { Icon: HomeIcon7, IconDark: HomeIconDark7, Label: MenuLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, IconDark: MapIconDark7, Label: MapaLabel7, labelW: 32, labelH: 12 },
+    Carrinho: { Icon: CartIcon7, IconDark: CartIconDark7, Label: CarrinhoLabel7, labelW: 52, labelH: 10 },
+    Opções: { Icon: GearIcon7, IconDark: GearIconDark7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
   },
 };
 
@@ -195,7 +211,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       top: 12, // Center vertically aligned with the 32x32 icon (top: 12 to not overlap text below)
     },
     isDarkMode
-      ? { backgroundColor: '#FFFFFF' }
+      ? { backgroundColor: '#2E2E38' }
       : { backgroundColor: '#E3DAD9', borderWidth: 0 }
   ];
 
@@ -210,7 +226,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           const config = (tabConfigs[activeTab] || tabConfigs.Menu)[route.name];
           if (!config) return null;
 
-          const { Icon, Label, labelW, labelH } = config;
+          const { Icon, IconDark, Label, labelW, labelH } = config;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -249,12 +265,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 }}
               >
                 <View style={styles.iconBg}>
-                  <Icon 
-                    width={32} 
-                    height={32} 
-                    fill={iconColor} 
-                    stroke={iconColor} 
-                  />
+                  {isDarkMode ? (
+                    <IconDark width={32} height={32} />
+                  ) : (
+                    <Icon width={32} height={32} />
+                  )}
                 </View>
                 <Label 
                   width={labelW} 

@@ -6,7 +6,7 @@ import { UserMenuProvider } from '../../presentation/contexts/UserMenuContext';
 import * as SecureStore from 'expo-secure-store';
 import { Alert, TouchableOpacity } from 'react-native';
 
-import AdminProfileScreen from '../../presentation/screens/admin/AdminProfileScreen';
+import AdminProfileScreen from '../../presentation/screens/admin/AdminProfile';
 
 const buildFromMock = (overrides: any = {}) => {
   const chain: any = {

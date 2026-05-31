@@ -10,8 +10,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 
 // Import screens
-import ManageProductsScreen from '../../presentation/screens/admin/ManageProductsScreen';
-import ProductCreateScreen from '../../presentation/screens/admin/ProductCreateScreen';
+import ManageProductsScreen from '../../presentation/screens/admin/ManageProducts';
+import ProductCreateScreen from '../../presentation/screens/admin/ProductCreate';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({

@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 
 // Import screen
-import ProductEditScreen from '../../presentation/screens/admin/ProductEditScreen';
+import ProductEditScreen from '../../presentation/screens/admin/ProductEdit';
 
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
@@ -700,7 +700,7 @@ describe('ProductEditScreen - Deep Coverage', () => {
     (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file://img1', base64: 'abcbase64' }] } as any);
 
     await act(async () => {
-      fireEvent.press(getByText('Adicionar foto'));
+      fireEvent.press(getByText('Trocar foto'));
     });
     await act(async () => {
       fireEvent.press(getByText('Escolher da Galeria'));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import { TextInput, TouchableOpacity, Alert } from 'react-native';
-import ClientLoginScreen from '../../presentation/screens/auth/ClientLoginScreen';
+import ClientLoginScreen from '../../presentation/screens/auth/ClientLogin';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../src/data/datasources/supabase/client';
 
