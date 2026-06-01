@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '../../../contexts/ThemeContext';
 import NumPedidoSvg from '../../../assets/tela11/em entrega 1/Nº do pedido.svg';
 import RastrearSvg from '../../../assets/tela11/em entrega 1/Rastrear.svg';
@@ -73,7 +74,7 @@ export function OrderCard({
       <View style={styles.photoCol}>
         <View style={styles.photoBox}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.productImage} />
+            <Image source={{ uri: imageUrl }} style={styles.productImage} contentFit="cover" cachePolicy="disk" />
           ) : (
             <View style={styles.placeholderImg} />
           )}

@@ -52,7 +52,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     setPdvLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, stock, active, category_id, description, categories(name)')
+      .select('id, name, price, stock, active, category_id, description, image_url, categories(name)')
       .eq('active', true)
       .order('name', { ascending: true });
     if (!error && data) {

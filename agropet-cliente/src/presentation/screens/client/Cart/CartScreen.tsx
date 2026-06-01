@@ -5,10 +5,11 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { CatalogHeader } from '../../../components/CatalogHeader';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import { useCartScreen } from './useCartScreen';
 import styles from './CartScreen.styles';
 
@@ -110,9 +111,10 @@ export default function CartScreen() {
               <View style={[styles.productPhoto, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                 {item.image_url ? (
                   <Image
-                    source={{ uri: h.getFirstImageUrl(item.image_url) || '' }}
+                    source={{ uri: getFirstImageUrl(item.image_url) || '' }}
                     style={styles.productImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="disk"
                   />
                 ) : (
                   <View style={[styles.productImage, { backgroundColor: h.isDarkMode ? '#3A3A44' : '#d9d9d9', justifyContent: 'center', alignItems: 'center' }]}>

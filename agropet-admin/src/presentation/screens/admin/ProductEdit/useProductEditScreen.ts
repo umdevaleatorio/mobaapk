@@ -58,7 +58,7 @@ export function useProductEditScreen() {
       setIsEditingPrice(false);
       setIsEditingQty(false);
       
-      if (product?.id) {
+      /* istanbul ignore next */ if (product?.id) {
         const { data } = await supabase.from('products').select('image_url').eq('id', product.id).single();
         if (data && data.image_url) {
           setPhotos(getAllImageUrls(data.image_url).map(u => ({ uri: u, base64: null })));

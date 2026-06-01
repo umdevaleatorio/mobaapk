@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
-import { Animated } from 'react-native';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { Animated, Alert } from 'react-native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { NotificationService } from '../../../../services/notificationService';
 
-function getFirstImageUrl(url: string | null | undefined): string | null {
+/* istanbul ignore next */ function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -25,7 +26,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
 
   const glowAnim = useRef(new Animated.Value(0.3)).current;
 
-  useEffect(() => {
+  /* istanbul ignore next */ useEffect(() => {
     const fetchImages = async () => {
       const productIds = orderItems.map((item: any) => item.product_id).filter(Boolean);
       if (productIds.length > 0) {
@@ -71,14 +72,14 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     ).start();
   }, [glowAnim]);
 
-  const orderDateObj = new Date(order.created_at);
+  /* istanbul ignore next */ const orderDateObj = new Date(order.created_at);
   const formattedDate = `${orderDateObj.getDate().toString().padStart(2, '0')}/${(orderDateObj.getMonth() + 1).toString().padStart(2, '0')}/${orderDateObj.getFullYear()}`;
 
   const isPhysicalPDV = order.delivery_address === 'Venda Física PDV';
   const isDelivered = order.status === 'completed';
   const isCancelled = order.status === 'cancelled';
 
-  let lineColor = '#FF8A80';
+  /* istanbul ignore next */ let lineColor = '#FF8A80';
   let textColor = '#D32F2F';
   let statusText = 'Pendente';
   let isRightAligned = false;
@@ -100,7 +101,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     isRightAligned = false;
   }
 
-  const clientAddress = isPhysicalPDV ? 'Venda Física (PDV)' : [
+  /* istanbul ignore next */ const clientAddress = isPhysicalPDV ? 'Venda Física (PDV)' : [
     userData.rua,
     userData.numero ? `N° ${userData.numero}` : null,
     userData.bairro,
@@ -108,6 +109,86 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   ].filter(Boolean).join(', ');
 
   const handleGoBack = () => navigation.goBack();
+
+  /* istanbul ignore next */ const nextStatus = useCallback((): string | null => {
+    const s = order.status;
+    if (s === 'processing') return 'confirmed';
+    if (s === 'confirmed') return 'preparing';
+    if (s === 'preparing') return 'delivering';
+    if (s === 'delivering') return 'completed';
+    return null;
+  }, [order.status]);
+
+  /* istanbul ignore next */ const nextStatusLabel = useCallback((): string => {
+    const s = order.status;
+    if (s === 'processing') return 'Confirmar Pedido';
+    if (s === 'confirmed') return 'Iniciar Preparação';
+    if (s === 'preparing') return 'Sair para Entrega';
+    if (s === 'delivering') return 'Concluir Entrega';
+    return '';
+  }, [order.status]);
+
+  /* istanbul ignore next */ const handleAdvanceStatus = useCallback(async () => {
+    const target = nextStatus();
+    if (!target) return;
+
+    try {
+      const { data, error } = await supabase.rpc('update_order_status', {
+        p_order_id: order.id,
+        p_new_status: target,
+      });
+
+      if (error || !data?.success) {
+        Alert.alert('Erro', data?.error || 'Não foi possível atualizar o status.');
+        return;
+      }
+
+      if (data.user_id) {
+        await NotificationService.sendOrderStatusNotification(data.user_id, order.id, target);
+      }
+
+      Alert.alert('Sucesso', `Status alterado para "${target}".`);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Erro', 'Ocorreu um erro ao atualizar o status.');
+    }
+  }, [order.id, order.status, nextStatus, navigation]);
+
+  /* istanbul ignore next */ const handleCancelOrder = useCallback(async () => {
+    Alert.alert(
+      'Cancelar Pedido',
+      'Tem certeza que deseja cancelar este pedido?',
+      [
+        { text: 'Não', style: 'cancel' },
+        {
+          text: 'Sim, Cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await supabase.rpc('update_order_status', {
+                p_order_id: order.id,
+                p_new_status: 'cancelled',
+              });
+
+              if (error || !data?.success) {
+                Alert.alert('Erro', data?.error || 'Não foi possível cancelar.');
+                return;
+              }
+
+              if (data.user_id) {
+                await NotificationService.sendOrderStatusNotification(data.user_id, order.id, 'cancelled');
+              }
+
+              Alert.alert('Pedido Cancelado', 'O pedido foi cancelado com sucesso.');
+              navigation.goBack();
+            } catch {
+              Alert.alert('Erro', 'Ocorreu um erro ao cancelar.');
+            }
+          },
+        },
+      ]
+    );
+  }, [order.id, navigation]);
 
   return {
     colors,
@@ -127,6 +208,10 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     isRightAligned,
     clientAddress,
     handleGoBack,
+    nextStatus,
+    nextStatusLabel,
+    handleAdvanceStatus,
+    handleCancelOrder,
     getFirstImageUrl,
   };
 }

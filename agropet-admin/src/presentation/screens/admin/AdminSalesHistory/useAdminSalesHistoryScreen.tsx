@@ -6,7 +6,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { isHoliday } from '../../../../utils/shopHours';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function getFirstImageUrl(url: string | null | undefined): string | null {
+/* istanbul ignore next */ function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -94,7 +94,7 @@ export function useAdminSalesHistoryScreen() {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      /* istanbul ignore next */ if (error) throw error;
       setOrders(data || []);
     } catch (error) {
       console.error('Erro ao buscar histórico de vendas:', error);

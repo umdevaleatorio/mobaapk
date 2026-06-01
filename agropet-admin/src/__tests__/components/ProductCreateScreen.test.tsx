@@ -193,7 +193,7 @@ describe('ManageProductsScreen - Deep Coverage', () => {
     ];
     (supabase.from as jest.Mock).mockImplementation(() => {
       const ch = createMockChain({ data: mockProducts });
-      ch.order = jest.fn().mockResolvedValue({ data: mockProducts, error: null });
+      ch.order = jest.fn().mockReturnValue({ limit: jest.fn().mockResolvedValue({ data: mockProducts, error: null }) });
       return ch;
     });
   });

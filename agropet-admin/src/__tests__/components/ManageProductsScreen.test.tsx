@@ -33,7 +33,8 @@ const mockProductsList = [
   { id: 'p-6', name: 'Ração Plain Imagem', price: 170, stock: 40, category_id: 'cat-1', active: true, description: 'Ração', image_url: 'https://example.com/single-img.png' },
 ];
 
-let mockOrderFn = jest.fn().mockResolvedValue({ data: mockProductsList, error: null });
+const mockLimitFn = jest.fn().mockResolvedValue({ data: mockProductsList, error: null });
+let mockOrderFn = jest.fn().mockReturnValue({ limit: mockLimitFn });
 const mockSelect = jest.fn().mockReturnValue({
   order: mockOrderFn,
 });
@@ -104,7 +105,7 @@ describe('ManageProductsScreen - Full Coverage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     stableRoute.params = {};
-    mockOrderFn.mockResolvedValue({ data: [...mockProductsList], error: null });
+    mockLimitFn.mockResolvedValue({ data: [...mockProductsList], error: null });
     mockEqFn.mockResolvedValue({ error: null });
     mockInFn.mockResolvedValue({ error: null });
   });
@@ -385,7 +386,7 @@ describe('ManageProductsScreen - Full Coverage', () => {
   });
 
   it('should show empty/error state when fetch has error', async () => {
-    mockOrderFn.mockResolvedValueOnce({ data: null, error: new Error('Query error') });
+    mockLimitFn.mockResolvedValueOnce({ data: null, error: new Error('Query error') });
     const { getByText } = render(<ManageProductsScreen />);
 
     await waitFor(() => {
@@ -518,7 +519,7 @@ describe('ManageProductsScreen - Full Coverage', () => {
       }
     ];
 
-    mockOrderFn.mockResolvedValueOnce({ data: mockSpecialProducts, error: null });
+    mockLimitFn.mockResolvedValueOnce({ data: mockSpecialProducts, error: null });
 
     const { getByText } = render(<ManageProductsScreen />);
 

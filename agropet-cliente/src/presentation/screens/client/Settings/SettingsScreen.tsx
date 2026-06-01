@@ -173,6 +173,44 @@ export default function SettingsScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16 }}>
+            <Text style={[styles.fieldLabel, { fontSize: 15, marginBottom: 12 }]}>Privacidade (LGPD)</Text>
+
+            <TouchableOpacity
+              onPress={h.handleExportData}
+              disabled={h.exportLoading}
+              style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 0 }]}
+            >
+              <Feather name="download" size={18} color={h.isDarkMode ? '#5B86E5' : '#042A7D'} />
+              <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+                {h.exportLoading ? 'Exportando...' : 'Baixar meus dados'}
+              </Text>
+            </TouchableOpacity>
+
+            {h.deletedAt ? (
+              <TouchableOpacity
+                onPress={h.handleReactivateAccount}
+                style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
+              >
+                <Feather name="rotate-ccw" size={18} color="#00C853" />
+                <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+                  Reativar conta
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={h.handleDeleteAccount}
+                disabled={h.deleteLoading}
+                style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
+              >
+                <Feather name="trash-2" size={18} color="#FF3B30" />
+                <Text style={[styles.fieldValue, { color: '#FF3B30' }]}>
+                  {h.deleteLoading ? 'Excluindo...' : 'Excluir conta'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 

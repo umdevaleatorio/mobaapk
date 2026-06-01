@@ -7,12 +7,14 @@ export function useAdminSettingsRadius(checkAllPermissions: () => Promise<void>)
   const [isEditingRadius, setIsEditingRadius] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deliveryDisabled, setDeliveryDisabled] = useState(false);
+  const [chavePix, setChavePix] = useState('');
+  const [pixMerchantName, setPixMerchantName] = useState('');
 
   const fetchRadius = async () => {
     try {
       const { data, error } = await supabase
         .from('store_settings')
-        .select('delivery_radius_km, delivery_active')
+        .select('delivery_radius_km, delivery_active, chave_pix, pix_merchant_name')
         .maybeSingle();
 
       if (data && !error) {
@@ -26,14 +28,20 @@ export function useAdminSettingsRadius(checkAllPermissions: () => Promise<void>)
         } else {
           setDeliveryDisabled(false);
         }
+        setChavePix(data.chave_pix || '');
+        setPixMerchantName(data.pix_merchant_name || '');
       } else {
         setRadius('17');
         setDeliveryDisabled(false);
+        setChavePix('');
+        setPixMerchantName('');
       }
     } catch (e) {
       console.log('Error loading radius/delivery from DB:', e);
       setRadius('17');
       setDeliveryDisabled(false);
+      setChavePix('');
+      setPixMerchantName('');
     }
   };
 
@@ -120,6 +128,35 @@ export function useAdminSettingsRadius(checkAllPermissions: () => Promise<void>)
     }
   };
 
+  const handleSavePixKey = async () => {
+    try {
+      const { data: existing, error: selectError } = await supabase
+        .from('store_settings')
+        .select('id')
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('store_settings')
+          .update({ chave_pix: chavePix, pix_merchant_name: pixMerchantName })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('store_settings')
+          .insert({ chave_pix: chavePix, pix_merchant_name: pixMerchantName });
+        if (insertError) throw insertError;
+      }
+
+      Alert.alert('Sucesso', 'Chave PIX atualizada com sucesso!');
+    } catch (e) {
+      console.error('Error saving pix key:', e);
+      Alert.alert('Erro', 'Não foi possível salvar a chave PIX.');
+    }
+  };
+
   return {
     radius,
     setRadius,
@@ -128,9 +165,14 @@ export function useAdminSettingsRadius(checkAllPermissions: () => Promise<void>)
     refreshing,
     deliveryDisabled,
     setDeliveryDisabled,
+    chavePix,
+    setChavePix,
+    pixMerchantName,
+    setPixMerchantName,
     fetchRadius,
     handleRefresh,
     handleSaveRadius,
     handleToggleDelivery,
+    handleSavePixKey,
   };
 }

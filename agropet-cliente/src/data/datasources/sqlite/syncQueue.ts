@@ -54,14 +54,17 @@ export class SyncQueueService {
       try {
         const data = JSON.parse(op.data_json);
 
-        if (op.table_name === 'orders') {
-          if (op.operation === 'INSERT') {
-            const { error } = await supabase.from('orders').insert(data);
-            if (error) throw error;
-          }
+        if (op.operation === 'INSERT') {
+          const { error } = await supabase.from(op.table_name).insert(data);
+          if (error) throw error;
+        } else if (op.operation === 'UPDATE') {
+          const { error } = await supabase.from(op.table_name).update(data).eq('id', data.id);
+          if (error) throw error;
+        } else if (op.operation === 'DELETE') {
+          const { error } = await supabase.from(op.table_name).delete().eq('id', data.id);
+          if (error) throw error;
         }
-        
-        // Remove da fila local após sucesso
+
         await this.markAsSynced(op.id!);
       } catch (error) {
         console.error(`Erro ao sincronizar transação ${op.id} da tabela ${op.table_name}:`, error);
@@ -118,5 +121,47 @@ export class ProductCacheService {
       active: r.active === 1,
       cached_at: r.cached_at
     }));
+  }
+}
+
+/**
+ * OrdersCacheService
+ * Responsabilidade Arquitetural: Cache local offline do histórico de pedidos.
+ */
+export class OrdersCacheService {
+  private db: SQLite.SQLiteDatabase;
+
+  constructor(db: SQLite.SQLiteDatabase) {
+    this.db = db;
+  }
+
+  async saveOrdersToCache(orders: any[]) {
+    await this.db.runAsync('DELETE FROM orders_cache');
+
+    for (const order of orders) {
+      await this.db.runAsync(
+        'INSERT INTO orders_cache (id, status, total, payment_method, delivery_type, created_at, data_json, cached_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          order.id,
+          order.status,
+          order.total,
+          order.payment_method,
+          order.delivery_type,
+          order.created_at,
+          JSON.stringify(order),
+          Date.now()
+        ]
+      );
+    }
+  }
+
+  async getCachedOrders(): Promise<any[]> {
+    const rows = await this.db.getAllAsync<any>('SELECT * FROM orders_cache ORDER BY created_at DESC');
+    return rows.map(r => {
+      if (r.data_json) {
+        try { return JSON.parse(r.data_json); } catch {}
+      }
+      return r;
+    });
   }
 }

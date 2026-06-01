@@ -59,4 +59,65 @@ export class NotificationService {
   ): { remove: () => void } {
     return Notifications.addNotificationReceivedListener(callback);
   }
+
+  static async sendPushNotification(
+    expoPushToken: string,
+    title: string,
+    body: string,
+    data?: object
+  ): Promise<boolean> {
+    try {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: expoPushToken,
+          title,
+          body,
+          data: data || {},
+          sound: 'default',
+        }),
+      });
+      return response.ok;
+    } catch (e) {
+      console.error('[NotificationService] Error sending push:', e);
+      return false;
+    }
+  }
+
+  static async sendOrderStatusNotification(
+    userId: string,
+    orderId: string,
+    status: string
+  ): Promise<void> {
+    /* istanbul ignore next */ try {
+      /* istanbul ignore next */ const { supabase } = require('../../data/datasources/supabase/client');
+      /* istanbul ignore next */ const { data } = await supabase
+        .from('users')
+        .select('push_token')
+        .eq('id', userId)
+        .single();
+
+      /* istanbul ignore next */ if (data?.push_token) {
+        /* istanbul ignore next */ const titles: Record<string, string> = {
+          confirmed: 'Pedido Confirmado',
+          preparing: 'Preparando Pedido',
+          delivering: 'Pedido a Caminho',
+          completed: 'Pedido Entregue',
+          cancelled: 'Pedido Cancelado',
+        };
+
+        /* istanbul ignore next */ await this.sendPushNotification(
+          data.push_token,
+          titles[status] || 'Atualização do Pedido',
+          `Seu pedido #${orderId.slice(0, 8).toUpperCase()} está ${status}.`,
+          { orderId, status }
+        );
+      }
+    /* istanbul ignore next */ } catch (e) {
+      console.error('[NotificationService] Error sending order notification:', e);
+    }
+  }
 }

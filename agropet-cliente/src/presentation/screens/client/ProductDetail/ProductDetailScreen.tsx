@@ -5,11 +5,12 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
-  Image,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { CatalogHeader, CatalogFilter } from '../../../components/CatalogHeader';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import CartBig from '../../../assets/tela5/carrinho/CartBig.svg';
 import PlusIcon from '../../../assets/tela5/carrinho/PlusIcon.svg';
 import HomeIcon from '../../../assets/tela5/barra/Home.svg';
@@ -48,7 +49,6 @@ export default function ProductDetailScreen() {
     clientName,
     searchText,
     setSearchText,
-    getFirstImageUrl,
     addToCart,
   } = useProductDetailScreen();
 
@@ -73,17 +73,17 @@ export default function ProductDetailScreen() {
                     <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
                       {currentPhotoIndex > 0 ? (
                         <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex - 1)}>
-                          <Image source={{ uri: photos[currentPhotoIndex - 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3, resizeMode: 'cover' }} />
+                          <Image source={{ uri: photos[currentPhotoIndex - 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3 }} contentFit="cover" cachePolicy="disk" />
                         </TouchableOpacity>
                       ) : null}
                     </View>
                     <View style={{ flex: 1, height: '100%', marginHorizontal: 4, borderRadius: 8, overflow: 'hidden' }}>
-                      <Image source={{ uri: photos[currentPhotoIndex] }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+                      <Image source={{ uri: photos[currentPhotoIndex] }} style={{ width: '100%', height: '100%' }} contentFit="contain" cachePolicy="disk" />
                     </View>
                     <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
                       {currentPhotoIndex < photos.length - 1 ? (
                         <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex + 1)}>
-                          <Image source={{ uri: photos[currentPhotoIndex + 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3, resizeMode: 'cover' }} />
+                          <Image source={{ uri: photos[currentPhotoIndex + 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3 }} contentFit="cover" cachePolicy="disk" />
                         </TouchableOpacity>
                       ) : null}
                     </View>
@@ -168,7 +168,7 @@ export default function ProductDetailScreen() {
               <TouchableOpacity key={relProduct.id} onPress={() => navigation.replace('ProductDetail', { product: relProduct })} activeOpacity={0.7} style={[styles.relatedCard, { backgroundColor: colors.cardBackground }]}>
                 <View style={[styles.relatedPhotoBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                   {relProduct.image_url ? (
-                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} resizeMode="contain" />
+                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} contentFit="contain" cachePolicy="disk" />
                   ) : (
                     <View style={styles.relatedPhotoPlaceholder}>
                       <Text style={{ fontSize: 40 }}>📦</Text>

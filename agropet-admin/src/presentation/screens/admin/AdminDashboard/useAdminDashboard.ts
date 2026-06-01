@@ -106,7 +106,7 @@ export function useAdminDashboard() {
         .from('orders')
         .select('id, created_at, total, payment_method')
         .eq('status', 'completed')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true }).limit(100);
       if (filtered) {
         const start = new Date(sDate);
         start.setHours(0, 0, 0, 0);

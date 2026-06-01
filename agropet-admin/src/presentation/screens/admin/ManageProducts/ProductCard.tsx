@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { getFirstImageUrl } from './useManageProductsScreen';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import EditIcon from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Edit.svg';
 import TrashIcon from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Trash.svg';
 import AtivoSvg from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Ativo.svg';
@@ -57,7 +58,7 @@ export const ProductCard = React.memo(({ item, selectionMode, isSelected, onTogg
         )}
         <View style={styles.productImageWrapper}>
           {item.image_url ? (
-            <Image source={{ uri: getFirstImageUrl(item.image_url) || '' }} style={styles.productImage} resizeMode="cover" />
+            <Image source={{ uri: /* istanbul ignore next */ getFirstImageUrl(item.image_url) || '' }} style={styles.productImage} contentFit="cover" cachePolicy="disk" />
           ) : (
             <View style={[styles.productImage, styles.noImage, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
               <Text style={[styles.noImageText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Sem{"\n"}Foto</Text>

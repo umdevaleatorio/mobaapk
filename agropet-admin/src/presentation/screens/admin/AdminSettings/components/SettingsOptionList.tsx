@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from '../AdminSettingsScreen.styles';
@@ -204,6 +204,46 @@ export default function SettingsOptionList({ h }: SettingsOptionListProps) {
         </View>
         <View style={styles.toggleSpacer} />
         <CustomSwitch active={h.deliveryDisabled} onPress={() => h.handleToggleDelivery(!h.deliveryDisabled)} colorActive="#FF3B30" animValue={h.deliverySwitchAnim} isDarkMode={h.isDarkMode} />
+      </View>
+
+      <View style={styles.toggleRow}>
+        <Animated.View style={[styles.iconBoxAnim]}>
+          <Feather name="users" size={22} color={h.isDarkMode ? '#FFC107' : '#4A90E2'} />
+        </Animated.View>
+        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF', flex: 1 }}>Contas para exclusão</Text>
+        <TouchableOpacity activeOpacity={0.7} onPress={h.handleOpenDeletedUsers} style={styles.chevronButton} testID="deleted-users-chevron">
+          <Feather name="chevron-right" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.fieldSection}>
+        <View style={{ marginBottom: 6, flexDirection: 'row', alignItems: 'center' }}>
+          <Feather name="credit-card" size={18} color="#00BFA5" style={{ marginRight: 8 }} />
+          <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>Chave PIX</Text>
+        </View>
+        <View style={[{ backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', borderRadius: 10, padding: 12, gap: 8 }]}>
+          <TextInput
+            style={[{ fontSize: 14, fontWeight: 'bold', color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}
+            value={h.chavePix}
+            onChangeText={h.setChavePix}
+            placeholder="Ex: 12345678900"
+            placeholderTextColor={h.isDarkMode ? '#666' : '#999'}
+          />
+          <TextInput
+            style={[{ fontSize: 14, fontWeight: 'bold', color: h.isDarkMode ? '#A8A8B3' : '#888' }]}
+            value={h.pixMerchantName}
+            onChangeText={h.setPixMerchantName}
+            placeholder="Nome do titular (opcional)"
+            placeholderTextColor={h.isDarkMode ? '#666' : '#999'}
+          />
+          <TouchableOpacity
+            style={{ alignSelf: 'flex-end', backgroundColor: '#00BFA5', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 16 }}
+            onPress={h.handleSavePixKey}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

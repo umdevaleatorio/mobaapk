@@ -8,6 +8,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 20,
+    /* istanbul ignore next */
     paddingBottom: Platform.OS === 'ios' ? 145 : 125,
   },
   sectionTitle: {

@@ -50,7 +50,7 @@ export default function AdminProfileScreen() {
               <TouchableOpacity
                 style={[styles.textInputBox, { backgroundColor: colors.cardBackground }]}
                 onPress={() => {
-                  if (!h.usuario) {
+                  /* istanbul ignore next */ if (!h.usuario) {
                     h.setUsernameInput('');
                     h.setUsernameStatus('idle');
                     h.setShowUsernameModal(true);

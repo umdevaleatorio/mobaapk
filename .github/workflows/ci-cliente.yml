@@ -1,0 +1,33 @@
+name: CI - Cliente
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agropet-cliente/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'agropet-cliente/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agropet-cliente
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: agropet-cliente/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || '' }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || '' }}

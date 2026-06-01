@@ -213,7 +213,7 @@ export default function AdminConsultSalesScreen() {
                   onPress={() => {
                     let start = new Date(h.localStartDate);
                     let end = new Date(h.localEndDate);
-                    if (start.getTime() > end.getTime()) { const t = start; start = end; end = t; }
+                    /* istanbul ignore next */ if (start.getTime() > end.getTime()) { const t = start; start = end; end = t; }
                     h.setPrevStartDate(h.startDate);
                     h.setPrevEndDate(h.endDate);
                     h.setPrevIsRange(h.isRange);

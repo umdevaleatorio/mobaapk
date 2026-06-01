@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StatusBar, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 
 import { useOrderDetailScreen } from './useOrderDetailScreen';
 import { styles } from './OrderDetailScreen.styles';
@@ -51,7 +53,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
               <View key={item.product_id || index} style={[styles.productCard, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
                 <View style={[styles.photoContainer, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                   {product.image_url ? (
-                    <Image source={{ uri: h.getFirstImageUrl(product.image_url) || '' }} style={styles.productImage} resizeMode="cover" />
+                    <Image source={{ uri: getFirstImageUrl(product.image_url) || '' }} style={styles.productImage} contentFit="cover" cachePolicy="disk" />
                   ) : (
                     <View style={[styles.placeholderImage, { backgroundColor: h.isDarkMode ? '#3A3A44' : '#EAEAEA' }]}>
                       <Feather name="image" size={24} color={h.isDarkMode ? '#555' : '#BBB'} />

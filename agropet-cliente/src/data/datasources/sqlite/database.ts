@@ -32,6 +32,7 @@ export async function initDB() {
       payment_method TEXT NOT NULL,
       delivery_type TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      data_json TEXT,
       cached_at INTEGER NOT NULL
     );
 
@@ -44,6 +45,14 @@ export async function initDB() {
       synced INTEGER DEFAULT 0
     );
   `);
+
+  // Migração: adicionar coluna data_json em orders_cache
+  // Se já existe, o ALTER é ignorado silenciosamente
+  try {
+    await db.execAsync('ALTER TABLE orders_cache ADD COLUMN data_json TEXT');
+  } catch {
+    // Coluna já existe — ignorar
+  }
   
   return db;
 }

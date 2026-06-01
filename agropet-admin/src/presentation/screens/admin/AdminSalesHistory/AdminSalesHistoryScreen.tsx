@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AdminHeader from '../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../components/AdminUserMenu';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import HojeLabelSvg from '../../../assets/tela6/resumos/Hoje_.svg';
 import FundoBtnFiltro from '../../../assets/tela6/selecionar data/Fundo.svg';
 import SetaBaixo from '../../../assets/tela6/selecionar data/Upside Down.svg';
@@ -36,13 +38,13 @@ export default function AdminSalesHistoryScreen() {
 
   const renderOrderCard = (order: any, index: number) => {
     const firstItem = order.order_items?.[0];
-    const productImg = h.getFirstImageUrl(firstItem?.products?.image_url);
+    const productImg = getFirstImageUrl(firstItem?.products?.image_url);
     return (
       <View key={order.id} style={[styles.orderCard, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#1C2434' }]}>
         <View style={styles.colContainer}>
           <View style={[styles.productImageContainer, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
             {productImg ? (
-              <Image source={{ uri: productImg }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={{ uri: productImg }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" />
             ) : (
               <View style={[styles.placeholderImg, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#E0E0E0' }]} />
             )}

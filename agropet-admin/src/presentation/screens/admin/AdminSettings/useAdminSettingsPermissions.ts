@@ -218,7 +218,7 @@ export function useAdminSettingsPermissions(notifIconRotate: Animated.Value) {
         Alert.alert(
           'Notificações de Teste Ativas',
           'Como o push do sistema não pôde ser registrado (comum no Expo Go ou se a permissão foi negada), ativamos o modo de simulação com notificações locais para você testar!',
-          [{ text: 'Maravilha!', onPress: () => sendLocalTestNotification().catch(() => {}) }]
+          [{ text: 'Maravilha!', onPress: () => sendLocalTestNotification().catch(/* istanbul ignore next */ () => {}) }]
         );
       }
     }

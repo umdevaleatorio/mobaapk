@@ -802,5 +802,41 @@ describe('AdminProfileScreen - Deep Coverage', () => {
     // Cleanup
     fromSpy.mockRestore();
   });
+
+  it('should cover .catch() callbacks in useAdminProfilePhoto and useAdminProfile', async () => {
+    const authRefreshSpy = jest.spyOn(supabase.auth, 'refreshSession').mockRejectedValue(new Error('refresh fail'));
+    const authUpdateSpy = jest.spyOn(supabase.auth, 'updateUser').mockRejectedValue(new Error('update fail'));
+
+    const authValWithAvatar = {
+      session: null,
+      user: { ...mockUser, user_metadata: { avatar_url: 'old-avatar' } } as any,
+      isLoading: false,
+      signOut: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const renderScreenWithCustomAuth = (ScreenComponent: any) => {
+      return render(
+        <AuthContext.Provider value={authValWithAvatar}>
+          <ThemeProvider>
+            <UserMenuProvider>
+              <ScreenComponent />
+            </UserMenuProvider>
+          </ThemeProvider>
+        </AuthContext.Provider>
+      );
+    };
+
+    renderScreenWithCustomAuth(AdminProfileScreen);
+
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(authRefreshSpy).toHaveBeenCalled();
+    expect(authUpdateSpy).toHaveBeenCalled();
+
+    authRefreshSpy.mockRestore();
+    authUpdateSpy.mockRestore();
+  });
 });
 

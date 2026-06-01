@@ -11,13 +11,16 @@
     "test:coverage": "jest --coverage --forceExit 2>nul"
   },
   "dependencies": {
+    "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/stack": "^6.3.20",
     "@supabase/supabase-js": "^2.39.2",
     "expo": "~54.0.0",
+    "expo-clipboard": "~8.0.8",
     "expo-dev-client": "~6.0.21",
     "expo-file-system": "~19.0.22",
+    "expo-image": "~3.0.11",
     "expo-image-picker": "~17.0.11",
     "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.17",

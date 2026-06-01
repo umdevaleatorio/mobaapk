@@ -127,6 +127,7 @@ const createMockChain = (overrides: any = {}) => {
     order: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
+    not: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({ data: overrides.singleData !== undefined ? overrides.singleData : { name: 'Admin', role: 'admin' }, error: defaultError }),
     maybeSingle: jest.fn().mockResolvedValue({ data: overrides.singleData !== undefined ? overrides.singleData : { name: 'Admin', role: 'admin' }, error: defaultError }),
@@ -1784,9 +1785,9 @@ describe('AdminSettingsScreen - Deep Coverage', () => {
     Notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
     Notifications.requestPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
 
-    const { getByText } = renderScreen(AdminSettingsScreen);
+    const { getAllByText, getByText } = renderScreen(AdminSettingsScreen);
     await act(async () => {
-      fireEvent.press(getByText('chevron-right'));
+      fireEvent.press(getAllByText('chevron-right')[0]);
     });
     await waitFor(() => {
       expect(getByText('Notificações Push')).toBeTruthy();
@@ -1893,8 +1894,55 @@ describe('AdminSettingsScreen - Deep Coverage', () => {
       await act(async () => { fireEvent.press(validarBtn); });
       // Now code input should be visible
       await waitFor(() => {
-        // The code input is shown for 'validar' status - covers lines 30-32, 37
         expect(UNSAFE_getAllByType(require('react-native').TextInput).length).toBeGreaterThan(0);
+      });
+    }
+  });
+
+  // ── useAdminSettingsEmail: cover .catch() callback on refreshSession (line 46) ──
+  it('should cover useAdminSettingsEmail catch callback on refreshSession', async () => {
+    const authValWithNewEmail = {
+      ...authVal,
+      user: { ...mockUser, new_email: 'pending@test.com' } as any,
+    };
+
+    (supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({ data: {}, error: null });
+    (supabase.auth.refreshSession as jest.Mock).mockRejectedValue(new Error('refresh fail'));
+
+    const { UNSAFE_getAllByType, getByPlaceholderText, getByText } = render(
+      <AuthContext.Provider value={authValWithNewEmail}>
+        <ThemeProvider>
+          <UserMenuProvider>
+            <AdminSettingsScreen />
+          </UserMenuProvider>
+        </ThemeProvider>
+      </AuthContext.Provider>
+    );
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    const { TouchableOpacity } = require('react-native');
+    const all = UNSAFE_getAllByType(TouchableOpacity);
+    const validarBtn = all.find((t: any) => {
+      try {
+        const { Text } = require('react-native');
+        const txt = t.findByType(Text);
+        return txt?.props?.children === 'Validar';
+      } catch { return false; }
+    });
+
+    if (validarBtn) {
+      await act(async () => { fireEvent.press(validarBtn); });
+      await waitFor(() => {
+        expect(getByPlaceholderText('Código de 6 dígitos...')).toBeTruthy();
+      });
+      fireEvent.changeText(getByPlaceholderText('Código de 6 dígitos...'), '123456');
+
+      await act(async () => {
+        fireEvent.press(getByText('Confirmar'));
+      });
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'E-mail alterado com sucesso!');
       });
     }
   });
@@ -2125,7 +2173,7 @@ describe('AdminSettingsScreen - Deep Coverage', () => {
       user: null as any,
     };
 
-    const { getAllByText, getByPlaceholderText } = render(
+    const { getAllByText, getByPlaceholderText, getByText } = render(
       <AuthContext.Provider value={authValNoUser}>
         <ThemeProvider>
           <UserMenuProvider>
@@ -2137,50 +2185,31 @@ describe('AdminSettingsScreen - Deep Coverage', () => {
     await act(async () => { jest.advanceTimersByTime(100); });
 
     // user=null → emailStatus starts as 'alterar' (since user?.new_email is undefined)
-    // Open email modal
+    // Open email modal by pressing a button labeled "Alterar" inside SettingsOptionList
     const alterarBtns = getAllByText('Alterar');
     if (alterarBtns.length > 0) {
       await act(async () => { fireEvent.press(alterarBtns[0]); });
     }
 
-    // Enter email and confirm → changes status to 'validar'
+    // Enter email and press Confirmar to change status to 'validar'
     const emailInput = getByPlaceholderText('novo@email.com');
     fireEvent.changeText(emailInput, 'new@test.com');
 
-    // Mock: no existing user with that email, updateUser succeeds
     (supabase.from as jest.Mock).mockImplementationOnce(() => createMockChain({ singleData: null }));
     jest.spyOn(supabase.auth, 'updateUser').mockResolvedValueOnce({ data: {} as any, error: null });
 
-    const { UNSAFE_getAllByType } = render(
-      <AuthContext.Provider value={authValNoUser}>
-        <ThemeProvider>
-          <UserMenuProvider>
-            <AdminSettingsScreen />
-          </UserMenuProvider>
-        </ThemeProvider>
-      </AuthContext.Provider>
-    );
-
+    // Press Confirmar — this transitions emailStatus from 'alterar' to 'validar'
     await act(async () => {
-      // just wait for effects
+      fireEvent.press(getByText('Confirmar'));
       await Promise.resolve();
     });
 
-    // Now directly mock entering validar mode: status='validar', user=null
-    // Press Confirmar to hit lines 36-37: emailStatus==='validar' but user=null → does nothing
-    try {
-      const { UNSAFE_getAllByType: getAllType } = render(
-        <AuthContext.Provider value={authValNoUser}>
-          <ThemeProvider>
-            <UserMenuProvider>
-              <AdminSettingsScreen />
-            </UserMenuProvider>
-          </ThemeProvider>
-        </AuthContext.Provider>
-      );
-    } catch (_) {}
-    // Lines 36-37 branch: `else if (emailStatus === 'validar') { if (user) { ... } }` → user=null → skips inner block
-    // This is covered by the above renders where user=null
+    // Now emailStatus is 'validar', user is null
+    // Press Confirmar again — this hits lines 36-37: emailStatus==='validar' but user=null → skips inner
+    await act(async () => {
+      fireEvent.press(getByText('Confirmar'));
+      await Promise.resolve();
+    });
   });
 
   // ── CustomSwitch: default colorActive branch ──
@@ -2195,6 +2224,292 @@ describe('AdminSettingsScreen - Deep Coverage', () => {
     const switches = UNSAFE_getAllByType(TouchableOpacity).filter((t: any) => t.props.activeOpacity === 0.8);
     expect(switches.length).toBeGreaterThan(0);
     // The presence of switches exercising different colorActive values covers the default branch
+  });
+
+  // ── DeletedUsersModal: fetch, render with expired/non-expired, formatDate, isExpired, onClose ──
+  it('should open DeletedUsersModal, render users, and close via onClose', async () => {
+    const deletedUsersData = [
+      {
+        id: 'user-to-delete-1',
+        name: 'João Excluído',
+        email: 'joao@test.com',
+        phone: '11999998888',
+        deleted_at: new Date(Date.now() - 86400000).toISOString(),
+        scheduled_delete_at: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 'user-to-delete-2',
+        name: 'Maria Excluída',
+        email: 'maria@test.com',
+        phone: null,
+        deleted_at: new Date(Date.now() - 86400000).toISOString(),
+        scheduled_delete_at: new Date(Date.now() + 86400000).toISOString(),
+      },
+    ];
+
+    (supabase.from as jest.Mock).mockImplementation(() =>
+      createMockChain({ data: deletedUsersData, error: null })
+    );
+
+    const { getByTestId, getByText, queryByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    // Press "Contas para exclusão" chevron
+    await act(async () => {
+      fireEvent.press(getByTestId('deleted-users-chevron'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('João Excluído')).toBeTruthy();
+      expect(getByText('Maria Excluída')).toBeTruthy();
+      expect(getByText('joao@test.com')).toBeTruthy();
+      expect(getByText('11999998888')).toBeTruthy();
+      expect(getByText('Pronta para remoção permanente')).toBeTruthy();
+      expect(getByText('Excluir Permanentemente')).toBeTruthy();
+    });
+
+    // Press "Excluir Permanentemente" (covers handleHardDelete + line 100)
+    await act(async () => {
+      fireEvent.press(getByText('Excluir Permanentemente'));
+    });
+
+    // Press close button (covers onClose callback)
+    await act(async () => {
+      fireEvent.press(getByText('Fechar'));
+    });
+
+    await waitFor(() => {
+      expect(queryByText('João Excluído')).toBeNull();
+    });
+  });
+
+  // ── DeletedUsersModal: fetchDeletedUsers catch block (line 30-31) ──
+  it('should handle fetchDeletedUsers catch when supabase.from throws', async () => {
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'users') throw new Error('DB error');
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const { getByTestId, queryByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('deleted-users-chevron'));
+      await Promise.resolve();
+    });
+
+    // Modal should still open, but no users rendered
+    await waitFor(() => {
+      expect(queryByText('Nenhuma conta marcada para exclusão.')).toBeTruthy();
+    });
+  });
+
+  // ── DeletedUsersModal: handleHardDelete error branch (line 46-47) ──
+  it('should handle hardDelete when rpc returns error', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() =>
+      createMockChain({ data: [{
+        id: 'test-id',
+        name: 'Test User',
+        email: 'test@test.com',
+        phone: null,
+        deleted_at: new Date(Date.now() - 86400000).toISOString(),
+        scheduled_delete_at: new Date(Date.now() - 3600000).toISOString(),
+      }], error: null })
+    );
+
+    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: new Error('RPC error') });
+
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const { getByTestId, getByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('deleted-users-chevron'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('Excluir Permanentemente')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Excluir Permanentemente'));
+    });
+
+    expect(consoleLogSpy).toHaveBeenCalled();
+    consoleLogSpy.mockRestore();
+  });
+
+  // ── DeletedUsersModal: handleHardDelete catch block (line 51) ──
+  it('should handle hardDelete catch when rpc throws', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() =>
+      createMockChain({ data: [{
+        id: 'test-id-2',
+        name: 'Test User 2',
+        email: 'test2@test.com',
+        phone: null,
+        deleted_at: new Date(Date.now() - 86400000).toISOString(),
+        scheduled_delete_at: new Date(Date.now() - 3600000).toISOString(),
+      }], error: null })
+    );
+
+    (supabase.rpc as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const { getByTestId, getByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('deleted-users-chevron'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('Excluir Permanentemente')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Excluir Permanentemente'));
+    });
+
+    expect(consoleLogSpy).toHaveBeenCalled();
+    consoleLogSpy.mockRestore();
+  });
+
+  // ── useAdminSettingsDeletedUsers: line 27 data falsy branch (!error && data where data is null) ──
+  it('should handle fetchDeletedUsers when data is null (line 27 data falsy branch)', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() =>
+      createMockChain({ data: null, error: null })
+    );
+
+    const { getByTestId, queryByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('deleted-users-chevron'));
+    });
+
+    await waitFor(() => {
+      expect(queryByText('Nenhuma conta marcada para exclusão.')).toBeTruthy();
+    });
+  });
+
+  // ── useAdminSettingsRadius: handleSavePixKey (lines 132-156) ──
+  it('should save pix key when existing settings record found (update path)', async () => {
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'store_settings') {
+        return createMockChain({ singleData: { id: 1 } });
+      }
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const { getByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByText('Salvar'));
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Chave PIX atualizada com sucesso!');
+    });
+  });
+
+  it('should save pix key when no existing settings record (insert path)', async () => {
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'store_settings') {
+        return createMockChain({ singleData: null });
+      }
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const { getByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByText('Salvar'));
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Chave PIX atualizada com sucesso!');
+    });
+  });
+
+  it('should handle save pix key error when select fails', async () => {
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'store_settings') {
+        return createMockChain({ error: new Error('Select error'), singleData: null });
+      }
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { getByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    await act(async () => {
+      fireEvent.press(getByText('Salvar'));
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível salvar a chave PIX.');
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle save pix key error when insert fails', async () => {
+    const chain = createMockChain({ singleData: null });
+    chain.insert = jest.fn().mockImplementation(() => ({
+      then: (resolve: any) => {
+        if (typeof resolve === 'function') resolve({ data: null, error: new Error('Insert error') });
+        return Promise.resolve({ data: null, error: new Error('Insert error') });
+      }
+    }));
+
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'store_settings') return chain;
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { getAllByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    const saveButtons = getAllByText('Salvar');
+    await act(async () => {
+      fireEvent.press(saveButtons[saveButtons.length - 1]);
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível salvar a chave PIX.');
+    });
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle save pix key error when update fails', async () => {
+    const chain = createMockChain({ singleData: { id: 1 } });
+    chain.update = jest.fn().mockReturnValue({
+      eq: jest.fn().mockImplementation(() => ({
+        then: (resolve: any) => {
+          if (typeof resolve === 'function') resolve({ data: null, error: new Error('Update error') });
+          return Promise.resolve({ data: null, error: new Error('Update error') });
+        }
+      }))
+    });
+
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'store_settings') return chain;
+      return createMockChain({ singleData: { id: 1, delivery_radius_km: 15, delivery_active: true } });
+    });
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { getAllByText } = renderScreen(AdminSettingsScreen);
+    await act(async () => { jest.advanceTimersByTime(100); });
+
+    const saveButtons = getAllByText('Salvar');
+    await act(async () => {
+      fireEvent.press(saveButtons[saveButtons.length - 1]);
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível salvar a chave PIX.');
+    });
+    consoleErrorSpy.mockRestore();
   });
 });
 

@@ -4,13 +4,14 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   Platform,
   StatusBar,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import AdminHeader from '../../../components/AdminHeader';
+import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import { useAdminOrderDetail } from './useAdminOrderDetail';
 import { styles } from './styles';
 
@@ -35,6 +36,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
       >
         <Text style={[styles.sectionListTitle, { color: h.colors.textDark, fontWeight: 'bold' }]}>
           Produtos do Pedido
@@ -61,9 +63,10 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
                 <View style={[styles.photoContainer, { backgroundColor: h.isDarkMode ? '#18181C' : '#FFFFFF' }]}>
                   {product.image_url ? (
                     <Image
-                      source={{ uri: h.getFirstImageUrl(product.image_url) || '' }}
+                      source={{ uri: getFirstImageUrl(product.image_url) || '' }}
                       style={styles.productImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      cachePolicy="disk"
                     />
                   ) : (
                     <View style={[styles.placeholderImage, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#EAEAEA' }]}>
@@ -170,6 +173,51 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           </Text>
         </View>
 
+        { /* istanbul ignore next */ h.nextStatus() && (
+          <TouchableOpacity
+            onPress={h.handleAdvanceStatus}
+            style={{
+              backgroundColor: '#042A7D',
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>
+              {h.nextStatusLabel()}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        { /* istanbul ignore next */ (h.order.status === 'confirmed' || h.order.status === 'preparing') && (
+          <TouchableOpacity
+            onPress={h.handleCancelOrder}
+            style={{
+              backgroundColor: '#FF3B30',
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>
+              Cancelar Pedido
+            </Text>
+          </TouchableOpacity>
+        )}
+
+      </ScrollView>
+
+      <View style={{
+        backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: h.isDarkMode ? 'rgba(255,255,255,0.1)' : '#E3E4EB',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+      }}>
         <TouchableOpacity
           style={styles.voltarBtn}
           onPress={h.handleGoBack}
@@ -178,8 +226,7 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           <Ionicons name="caret-back" size={16} color={h.isDarkMode ? '#FFE082' : h.colors.textDark} style={{ marginRight: 4 }} />
           <Text style={[styles.voltarText, { color: h.isDarkMode ? '#FFE082' : h.colors.textDark, fontWeight: 'bold' }]}>Voltar</Text>
         </TouchableOpacity>
-
-      </ScrollView>
+      </View>
     </View>
   );
 }

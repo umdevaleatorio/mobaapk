@@ -21,6 +21,7 @@ import EmailModal from './EmailModal';
 import PasswordModal from './PasswordModal';
 import NestedModal from './NestedModal';
 import PermissionsModal from './PermissionsModal';
+import DeletedUsersModal from './DeletedUsersModal';
 
 export default function AdminSettingsScreen() {
   const h = useAdminSettings();
@@ -53,6 +54,14 @@ export default function AdminSettingsScreen() {
       <PasswordModal h={h} />
       <NestedModal h={h} />
       <PermissionsModal h={h} />
+      <DeletedUsersModal
+        visible={h.showDeletedUsersModal}
+        onClose={() => h.setShowDeletedUsersModal(false)}
+        deletedUsers={h.deletedUsers}
+        loading={h.deletedUsersLoading}
+        onHardDelete={h.handleHardDelete}
+        isDarkMode={h.isDarkMode}
+      />
       <AdminUserMenu />
     </View>
   );

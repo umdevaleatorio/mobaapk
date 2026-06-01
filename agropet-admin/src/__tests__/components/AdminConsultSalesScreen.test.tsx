@@ -1224,6 +1224,32 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
     fromSpy.mockImplementation(() => createMockChain());
   });
 
+  it('should cover Platform.OS android branches and light mode with no dates', async () => {
+    const originalPlatform = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      writable: true,
+    });
+
+    (global as any).isDarkModeTest = false;
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key: string) => {
+      if (key === 'admin_consult_hasFiltered') return 'false';
+      return null;
+    });
+
+    const { getByText } = renderScreen(AdminConsultSalesScreen);
+
+    await waitFor(() => {
+      expect(getByText('Selecionar data')).toBeTruthy();
+    });
+
+    (global as any).isDarkModeTest = true;
+    Object.defineProperty(Platform, 'OS', {
+      value: originalPlatform,
+      writable: true,
+    });
+  });
+
   it('should cover stylesheet Platform.OS = ios branches', () => {
     const originalPlatform = Platform.OS;
     jest.isolateModules(() => {

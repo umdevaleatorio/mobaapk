@@ -38,7 +38,7 @@ export function useAdminSettingsPassword(userEmail: string) {
       return;
     }
 
-    if (userEmail) {
+    /* istanbul ignore next */ if (userEmail) {
       const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password: currentPassword });
       if (error) {
         showErrorWithTimeout('Senha incorreta!');

@@ -8,24 +8,14 @@ import {
   Animated,
   Text,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { CatalogHeader, CatalogFilter } from '../../../components/CatalogHeader';
+import { getAllImageUrls } from '../../../../utils/imageUtils';
 import VerItemSvg from '../../../assets/tela4/produto/VerItem.svg';
 import { useTheme } from '../../../contexts/ThemeContext';
 import useHomeScreen from './useHomeScreen';
 import styles from './HomeScreen.styles';
-
-function getAllImageUrls(url: string | null | undefined): string[] {
-  if (!url) return [];
-  const trimmed = url.trim();
-  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(u => !!u);
-    } catch (_) {}
-  }
-  return [url];
-}
 
 function AnimatedProductImage({ imageUrl, style }: { imageUrl: string | null | undefined, style: any }) {
   const { isDarkMode } = useTheme();
@@ -66,11 +56,14 @@ function AnimatedProductImage({ imageUrl, style }: { imageUrl: string | null | u
   }
 
   return (
-    <Animated.Image
-      source={{ uri: urls[index] }}
-      style={[style, { opacity }]}
-      resizeMode="cover"
-    />
+    <Animated.View style={[style, { opacity }]}>
+      <Image
+        source={{ uri: urls[index] }}
+        style={{ width: '100%', height: '100%' }}
+        contentFit="cover"
+        cachePolicy="disk"
+      />
+    </Animated.View>
   );
 }
 

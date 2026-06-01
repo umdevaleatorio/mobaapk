@@ -1,6 +1,7 @@
 import { useEffect, useState, useContext, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { AuthContext } from '../../../contexts/AuthContext';
+import { useConnectivity } from '../../../contexts/ConnectivityContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { getShopStatus } from '../../../../utils/shopHours';
 
@@ -32,6 +33,7 @@ export function useOrdersScreen({ navigation }: any) {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [deliveryActive, setDeliveryActive] = useState(true);
+  const { ordersCacheService } = useConnectivity();
   const [trackingErrors, setTrackingErrors] = useState<{[orderId: string]: string}>({});
 
   const showAlert = useCallback((title: string, message: string) => {
@@ -53,7 +55,11 @@ export function useOrdersScreen({ navigation }: any) {
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
-      
+
+      if (ordersData && ordersCacheService) {
+        await ordersCacheService.saveOrdersToCache(ordersData);
+      }
+
       const ordersWithImages = ordersData ? [...ordersData] : [];
       
       // Lazily fetch the first image for each order to avoid OOM
@@ -84,6 +90,12 @@ export function useOrdersScreen({ navigation }: any) {
       setOrders(ordersWithImages);
     } catch (error) {
       console.error(error);
+      if (ordersCacheService) {
+        const cached = await ordersCacheService.getCachedOrders();
+        if (cached.length > 0) {
+          setOrders(cached);
+        }
+      }
     } finally {
       if (showLoading) setLoading(false);
     }

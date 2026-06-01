@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { CartContext } from '../../../contexts/CartContext';
 import { AuthContext } from '../../../contexts/AuthContext';
+import { useConnectivity } from '../../../contexts/ConnectivityContext';
 import { useFilter, isProductInCategories } from '../../../contexts/FilterContext';
 import { getShopStatus } from '../../../../utils/shopHours';
 
@@ -19,6 +20,7 @@ export default function useHomeScreen() {
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
 
+  const { isOnline, productCacheService } = useConnectivity();
   const [esgotadoAlert, setEsgotadoAlert] = useState<string | null>(null);
   const [deliveryActive, setDeliveryActive] = useState<boolean>(true);
   const [showReactivatedAlert, setShowReactivatedAlert] = useState(false);
@@ -150,7 +152,15 @@ export default function useHomeScreen() {
       .eq('active', true)
       .order('created_at', { ascending: false });
 
-    if (!error) setProducts(data || []);
+    if (!error && data) {
+      setProducts(data);
+      if (productCacheService) {
+        await productCacheService.saveProductsToCache(data);
+      }
+    } else if (productCacheService) {
+      const cached = await productCacheService.getCachedProducts();
+      setProducts(cached);
+    }
     if (showLoadingIndicator) setLoading(false);
   };
 

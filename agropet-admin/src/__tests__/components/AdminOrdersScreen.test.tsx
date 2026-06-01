@@ -662,5 +662,28 @@ describe('AdminOrdersScreen - Deep Coverage', () => {
     const { getByText: getByText2 } = renderScreen(AdminOrdersScreen);
     await waitFor(() => expect(getByText2('Débito')).toBeTruthy());
   });
+
+  it('should cover || fallback when cancelled order has no updated_at', async () => {
+    const today = new Date();
+    const todayISO = today.toISOString();
+    const cancelledOrder = {
+      id: 'o-no-updated-at',
+      status: 'cancelled',
+      payment_method: 'pix',
+      created_at: todayISO,
+      order_items: [],
+      users: { name: 'NoUpdateAt', lat: -22.9, lng: -47.0, location_confirmed: true, rua: '', numero: '', bairro: '' },
+    };
+
+    (supabase.from as jest.Mock).mockImplementation(() =>
+      makeOrdersChain({ data: [cancelledOrder], error: null })
+    );
+
+    const { getAllByText } = renderScreen(AdminOrdersScreen);
+
+    await waitFor(() => {
+      expect(getAllByText('Cancelado').length).toBeGreaterThan(0);
+    });
+  });
 });
 

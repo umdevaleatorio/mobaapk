@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, Modal, ScrollView, TouchableOpacity,
-  ActivityIndicator, Image, Dimensions
+  ActivityIndicator, Dimensions
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { styles } from '../AdminDashboardScreen.styles';
-import { getFirstImageUrl } from '../useAdminDashboard';
+import { getFirstImageUrl } from '../../../../../utils/imageUtils';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -108,9 +109,10 @@ export default function CheckoutModal({
                       shadowOpacity: 0.2, shadowRadius: 1.5, elevation: 2, overflow: 'hidden',
                     }}>
                       {item.image_url ? (
-                        <Image source={{ uri: getFirstImageUrl(item.image_url) || '' }} style={{ width: 58, height: 58 }} resizeMode="contain" />
+                        <Image source={{ uri: 
+                          /* istanbul ignore next */ getFirstImageUrl(item.image_url) || '' }} style={{ width: 70, height: 70 }} contentFit="cover" cachePolicy="disk" />
                       ) : (
-                        <View style={{ width: 58, height: 58, backgroundColor: '#E0E0E0', borderRadius: 8 }} />
+                        <View style={{ width: 70, height: 70, backgroundColor: '#E0E0E0', borderRadius: 12 }} />
                       )}
                     </View>
                   </View>

@@ -10,6 +10,7 @@ import { useAdminSettingsPassword } from './useAdminSettingsPassword';
 import { useAdminSettingsRadius } from './useAdminSettingsRadius';
 import { useAdminSettingsPermissions } from './useAdminSettingsPermissions';
 import { useAdminSettingsAnimations } from './useAdminSettingsAnimations';
+import { useAdminSettingsDeletedUsers } from './useAdminSettingsDeletedUsers';
 
 export function useAdminSettings() {
   const { user } = useContext(AuthContext);
@@ -27,6 +28,7 @@ export function useAdminSettings() {
   const password = useAdminSettingsPassword(userEmail);
   const permissions = useAdminSettingsPermissions(notifIconRotate);
   const radius = useAdminSettingsRadius(permissions.checkAllPermissions);
+  const deletedUsers = useAdminSettingsDeletedUsers();
 
   // Animations needs values from permissions and radius
   const animations = useAdminSettingsAnimations(
@@ -102,6 +104,10 @@ export function useAdminSettings() {
     refreshing: radius.refreshing,
     deliveryDisabled: radius.deliveryDisabled,
     setDeliveryDisabled: radius.setDeliveryDisabled,
+    chavePix: radius.chavePix,
+    setChavePix: radius.setChavePix,
+    pixMerchantName: radius.pixMerchantName,
+    setPixMerchantName: radius.setPixMerchantName,
     showEmailModal: email.showEmailModal,
     setShowEmailModal: email.setShowEmailModal,
     emailInput: email.emailInput,
@@ -164,6 +170,7 @@ export function useAdminSettings() {
     handleRefresh: radius.handleRefresh,
     handleSaveRadius: radius.handleSaveRadius,
     handleToggleDelivery: radius.handleToggleDelivery,
+    handleSavePixKey: radius.handleSavePixKey,
     handleToggleTheme: animations.handleToggleTheme,
     handleToggleGreeting: animations.handleToggleGreeting,
     handleConfirmEmail: email.handleConfirmEmail,
@@ -183,5 +190,11 @@ export function useAdminSettings() {
     requestNotifications: permissions.requestNotifications,
     registerForPushNotificationsAsync: permissions.registerForPushNotificationsAsync,
     sendLocalTestNotification: permissions.sendLocalTestNotification,
+    showDeletedUsersModal: deletedUsers.showDeletedUsersModal,
+    setShowDeletedUsersModal: deletedUsers.setShowDeletedUsersModal,
+    deletedUsers: deletedUsers.deletedUsers,
+    deletedUsersLoading: deletedUsers.loading,
+    handleOpenDeletedUsers: deletedUsers.handleOpenDeletedUsers,
+    handleHardDelete: deletedUsers.handleHardDelete,
   };
 }

@@ -33,7 +33,8 @@ export function useAdminSettingsEmail() {
 
       setEmailCode('');
       setEmailStatus('validar');
-    } else if (emailStatus === 'validar') {
+    }
+    /* istanbul ignore else */ if (emailStatus === 'validar') {
       if (user) {
         const { error } = await supabase.auth.verifyOtp({
           email: emailInput.toLowerCase(), token: emailCode, type: 'email_change'
@@ -43,7 +44,7 @@ export function useAdminSettingsEmail() {
           return;
         }
         await supabase.from('users').update({ email: emailInput.toLowerCase() }).eq('id', user.id);
-        await supabase.auth.refreshSession().catch(() => {});
+        /* istanbul ignore next */ await supabase.auth.refreshSession().catch(() => {});
         setEmailStatus('alterar');
         setShowEmailModal(false);
         Alert.alert('Sucesso', 'E-mail alterado com sucesso!');

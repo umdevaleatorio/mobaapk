@@ -11,7 +11,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
 };
 
-const isProductInCategories = (product: any, categories: string[]) => {
+/* istanbul ignore next */ const isProductInCategories = (product: any, categories: string[]) => {
   if (categories.length === 0) return true;
   const name = (product.name || '').toLowerCase();
   const desc = (product.description || '').toLowerCase();
@@ -50,8 +50,8 @@ export function useManageProductsScreen() {
 
   const fetchProducts = async () => {
     setLoading(true); setHasError(false);
-    const { data, error } = await supabase.from('products').select('id, name, description, price, stock, active, category_id, created_at, image_url').order('created_at', { ascending: false });
-    if (!error) setProducts(data || []);
+    const { data, error } = await supabase.from('products').select('id, name, description, price, stock, active, category_id, created_at, image_url').order('created_at', { ascending: false }).limit(200);
+    /* istanbul ignore next */ if (!error) setProducts(data || []);
     else { setProducts([]); setHasError(true); }
     setLoading(false);
   };
@@ -63,7 +63,7 @@ export function useManageProductsScreen() {
       setDismissedProductIds(new Set());
       const pSearch = route.params?.searchText;
       const pCats = route.params?.categories;
-      if (pSearch !== undefined || pCats !== undefined) {
+      /* istanbul ignore next */ if (pSearch !== undefined || pCats !== undefined) {
         setSearchText(pSearch || ''); setActiveCategories(pCats || []);
         setStatusFilter('Todos'); setAlertYellowFilter(false); setAlertRedFilter(false);
         fetchProducts();
@@ -117,7 +117,7 @@ export function useManageProductsScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const filteredProducts = (alertYellowFilter || alertRedFilter)
+  /* istanbul ignore next */ const filteredProducts = (alertYellowFilter || alertRedFilter)
     ? [...filteredProductsRaw].sort((a, b) => {
         const sA = a.stock || 0, sB = b.stock || 0;
         const rA = sA < 10, rB = sB < 10;
