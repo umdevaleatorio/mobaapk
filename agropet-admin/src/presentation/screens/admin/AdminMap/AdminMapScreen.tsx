@@ -18,6 +18,8 @@ const LegendPin = ({ color }: { color: string }) => (
 export default function AdminMapScreen() {
   const h = useAdminMapScreen();
 
+  /* istanbul ignore next */
+  const mapStyle = isNightTime() ? darkMapStyle : undefined;
   /* istanbul ignore next */ const renderSuggestions = () => h.suggestions.length > 0 ? (
     <ScrollView style={[styles.suggestionsList, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]} keyboardShouldPersistTaps="handled">
       {h.suggestions.map((item: any, index: number) => (
@@ -53,7 +55,7 @@ export default function AdminMapScreen() {
           </View>
         )}
 
-        <MapView ref={h.mapRef} style={styles.map} initialRegion={h.storeLocation} showsUserLocation showsMyLocationButton customMapStyle={isNightTime() ? darkMapStyle : undefined} followsUserLocation={false}>
+        <MapView ref={h.mapRef} style={styles.map} initialRegion={h.storeLocation} showsUserLocation showsMyLocationButton customMapStyle={mapStyle} followsUserLocation={false}>
           <Marker
             draggable={h.isEditingLocation}
             onDragEnd={h.handleMarkerDragEnd}

@@ -161,6 +161,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -205,7 +206,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
   });
 
   it('should capture catch block errors for AsyncStorage and focus listener binds', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error');
     (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error('AsyncStorage read error'));
     (AsyncStorage.setItem as jest.Mock).mockRejectedValue(new Error('AsyncStorage write error'));
 
@@ -228,7 +229,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
       });
     }
 
-    consoleSpy.mockRestore();
+    consoleSpy.mockClear();
   });
 
   it('should handle cancel order triggers for both physical PDV and ecommerce completed sales', async () => {
@@ -936,7 +937,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
   });
 
   it('should cover fetchSales error catch path', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error');
     const errorSpy = jest.spyOn(supabase, 'from').mockImplementation(() => {
       const chain = createMockChain();
       chain.then = (resolve: any) => {
@@ -950,7 +951,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
       expect(consoleSpy).toHaveBeenCalled();
     });
 
-    consoleSpy.mockRestore();
+    consoleSpy.mockClear();
     errorSpy.mockRestore();
   });
 
