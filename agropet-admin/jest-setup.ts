@@ -1,6 +1,68 @@
 import 'react-native-gesture-handler/jestSetup';
 
-jest.setTimeout(30000);
+jest.setTimeout(120000);
+
+// Polyfill WebSocket for Node.js 20 (Supabase realtime-js requires it)
+class MockWebSocket {
+  constructor(_url: string, _protocols?: string | string[]) {}
+  close() {}
+  send(_data?: any) {}
+  addEventListener(_type: string, _listener: EventListener) {}
+  removeEventListener(_type: string, _listener: EventListener) {}
+  onopen: ((this: any, ev: Event) => any) | null = null;
+  onmessage: ((this: any, ev: MessageEvent) => any) | null = null;
+  onclose: ((this: any, ev: CloseEvent) => any) | null = null;
+  onerror: ((this: any, ev: Event) => any) | null = null;
+  readonly CONNECTING = 0;
+  readonly OPEN = 1;
+  readonly CLOSING = 2;
+  readonly CLOSED = 3;
+  readonly readyState = 1;
+  readonly url = '';
+  readonly protocol = '';
+  readonly binaryType = '';
+  readonly bufferedAmount = 0;
+  readonly extensions = '';
+}
+(globalThis as any).WebSocket = MockWebSocket as any;
+(global as any).WebSocket = MockWebSocket as any;
+
+// Mock @supabase/supabase-js to avoid WebSocket initialization during module load
+jest.mock('@supabase/supabase-js', () => {
+  const mockStorage = {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  };
+  const mockAuth = {
+    getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+    signOut: jest.fn().mockResolvedValue({ error: null }),
+    onAuthStateChange: jest.fn().mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
+    updateUser: jest.fn().mockResolvedValue({ data: { user: {} }, error: null }),
+    storage: mockStorage,
+  };
+  const mockChain = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    gte: jest.fn().mockReturnThis(),
+    lte: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    insert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
+    then: undefined,
+  };
+  const mockSupabase = {
+    from: jest.fn().mockReturnValue(mockChain),
+    auth: mockAuth,
+  };
+  return {
+    createClient: jest.fn(() => mockSupabase),
+  };
+});
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')

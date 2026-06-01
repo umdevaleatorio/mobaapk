@@ -187,7 +187,6 @@ describe('AdminProfileScreen - Deep Coverage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
     (supabase.from as jest.Mock).mockImplementation(() => createMockChain({
@@ -207,6 +206,7 @@ describe('AdminProfileScreen - Deep Coverage', () => {
   });
 
   it('should render profile screen and trigger name debounced updates', async () => {
+    jest.useFakeTimers();
     const { getByPlaceholderText } = renderScreen(AdminProfileScreen, {
       navigation: { addListener: jest.fn().mockReturnValue(jest.fn()), navigate: jest.fn() },
     });
@@ -243,6 +243,7 @@ describe('AdminProfileScreen - Deep Coverage', () => {
   });
 
   it('should handle username modal workflows including validation, suggestions, RPC, and saving to database', async () => {
+    jest.useFakeTimers();
     const selectEmptyUsernameSpy = jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
       singleData: { name: 'Admin User', username: '', email: 'admin@test.com', phone: '11999998888', role: 'admin', rua: 'Rua A', bairro: 'Bairro B', cep: '37480-000', numero: '10' }
     }));

@@ -1,3 +1,6 @@
+// This test needs the REAL supabase client (not the mock from jest-setup.ts)
+jest.unmock('@supabase/supabase-js');
+
 import { supabase } from '../../../data/datasources/supabase/client';
 import * as SecureStore from 'expo-secure-store';
 
